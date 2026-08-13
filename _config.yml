@@ -13,7 +13,7 @@
 # you will see them accessed via {{ site.title }}, {{ site.github_repo }}, and so on.
 # You can create any custom variable you would like, and they will be accessible
 # in the templates via {{ site.myvariable }}.
-title: ML101
+title: ML 101
 tagline: An introduction to machine learning
 description: A student-run introduction to machine learning and deep learning, from regression and neural network fundamentals through computer vision, attention, transformers, generative AI, and reinforcement learning.
 author: Society for Artificial Intelligence and Deep Learning
