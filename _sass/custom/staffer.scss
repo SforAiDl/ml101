@@ -4,9 +4,11 @@
 
   .staffer-image {
     border-radius: 50%;
+    flex-shrink: 0;
     height: 100px;
     margin-right: $sp-4;
-    width: auto;
+    object-fit: cover;
+    width: 100px;
   }
 
   .anchor-heading {
@@ -40,6 +42,62 @@
     .staffer-meta {
       display: grid;
       grid-template-columns: auto 1fr;
+    }
+  }
+}
+
+.staffer-grid {
+  display: grid;
+  grid-template-columns: max-content;
+  justify-content: space-between;
+  margin-top: $sp-6;
+  row-gap: $sp-6;
+
+  @include mq(md) {
+    grid-template-columns: repeat(2, max-content);
+  }
+
+  @include mq(lg) {
+    grid-template-columns: repeat(3, max-content);
+    row-gap: $sp-9;
+  }
+
+  .staffer {
+    align-items: center;
+    margin: 0;
+  }
+
+  .staffer-image {
+    height: 64px;
+    margin-right: $sp-3;
+    width: 64px;
+  }
+
+  // Names and emails each stay on one line; the columns are sized to fit them.
+  .staffer-name {
+    font-size: 0.9375rem !important;
+    margin-bottom: $sp-2;
+    white-space: nowrap;
+  }
+
+  p {
+    font-size: 0.875rem;
+    white-space: nowrap;
+  }
+
+  // Only the widest layout has room for larger photos and text.
+  @include mq(lg) {
+    .staffer-image {
+      height: 72px;
+      width: 72px;
+    }
+
+    .staffer-name {
+      font-size: 1rem !important;
+    }
+
+    p {
+      font-size: 0.9375rem;
     }
   }
 }

@@ -84,9 +84,14 @@
         }
 
         dt {
-          flex: 0 0 62.5%;
+          flex: 0 0 78%;
           font-weight: normal;
           margin: 0;
+
+          // Keeps the lecture text off the slides column when a line runs long
+          @include mq(sm) {
+            padding-right: $sp-4;
+          }
         }
 
         dd {

@@ -8,6 +8,22 @@
 @import 'staffer';
 
 // Overrides
+
+// On large screens the theme grows the sidebar to keep the content centred,
+// which leaves the nav taking up a third of the page. Keep it a fixed width.
+@include mq(lg) {
+  .side-bar {
+    width: $nav-width;
+  }
+}
+
+// No site footer, so hide the divider and the footer blocks the theme draws
+main + hr,
+main + hr + footer,
+.site-footer {
+  display: none !important;
+}
+
 code {
   font-size: 14px;
   padding: 0.2em 0.4em;

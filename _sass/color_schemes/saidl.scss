@@ -1,0 +1,25 @@
+// SAiDL color scheme, layered on top of Just the Docs' light scheme.
+// Palette matches the SAiDL website (saidl.in): accent #800080, accent-light #9b30ff.
+
+$purple-000: #f4ecf7;
+$purple-100: #9b30ff; // --accent-light
+$purple-200: #800080; // --accent
+$purple-300: #5c005c;
+
+$body-background-color: $white;
+$sidebar-color: #f9fafb; // --bg-subtle
+$search-background-color: $white;
+$table-background-color: $white;
+$code-background-color: #f9f5fc;
+$feedback-color: darken($sidebar-color, 3%);
+
+// Headings and body text stay as the stock template renders them
+$body-text-color: $grey-dk-100; // #5c5962
+$body-heading-color: $grey-dk-300; // #27262b
+$search-result-preview-color: #6b7280; // --text-light
+$nav-child-link-color: #4a4a4a; // --secondary
+$link-color: $purple-200;
+$btn-primary-color: $purple-200;
+$base-button-color: #f9fafb;
+
+$border-color: #e5e7eb; // --border

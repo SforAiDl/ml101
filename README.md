@@ -1,39 +1,35 @@
 ---
 layout: home
-title: Just the Class
+title: ML101
 nav_exclude: true
 permalink: /:path/
 seo:
   type: Course
-  name: Just the Class
+  name: ML101
 ---
 
-# Just the Class
+# ML101
 
-Just the Class is a GitHub Pages template developed for the purpose of quickly deploying course websites. In addition to serving plain web pages and files, it provides a boilerplate for:
+ML101 is a student-run introduction to machine learning, organised by the [Society for Artificial Intelligence and Deep Learning](https://www.saidl.in){:target="_blank" rel="noopener noreferrer"} in collaboration with the [Center for Technical Education](https://bpgc-cte.org/){:target="_blank" rel="noopener noreferrer"} (CTE). It runs in the First Semester of 2026-27, and every lecture is designed and delivered by current members of SAiDL.
 
-- [announcements](announcements.md),
-- a [course calendar](calendar.md),
-- a [staff](staff.md) page,
-- and a weekly [schedule](schedule.md).
+The course starts from regression and the fundamentals of how models learn, then moves into deep learning: neural networks, computer vision, attention, transformers, generative AI, and reinforcement learning. By the end you understand not just how modern AI systems are used, but how they are built and why they work.
 
-Just the Class is a template that extends the popular [Just the Docs](https://github.com/just-the-docs/just-the-docs) theme, which provides a robust and thoroughly-tested foundation for your website. Just the Docs include features such as:
+SAiDL is a student-run, non-profit group of undergraduates at BITS Pilani, Goa working on research and applications of artificial intelligence and deep learning. Its members have collaborated with research groups and companies including Harvard, Brown, MIT, Mila, CMU, INRIA, Google, Microsoft Research, Adobe, and Amazon, among many others.
 
-- automatic [navigation structure](https://just-the-docs.github.io/just-the-docs/docs/navigation-structure/),
-- instant, full-text [search](https://just-the-docs.github.io/just-the-docs/docs/search/) and page indexing,
-- and a set of [UI components](https://just-the-docs.github.io/just-the-docs/docs/ui-components) and authoring [utilities](https://just-the-docs.github.io/just-the-docs/docs/utilities).
+## Prerequisites
 
-## Getting Started
+None. Some familiarity with Python helps, but it is not a requirement, and we will point you to resources for picking it up alongside the lectures. No prior machine learning or deep learning experience is expected, as everything is built up from scratch during the course.
 
-Getting started with Just the Class is simple.
+## Lectures
 
-1. Create a [new repository based on Just the Class](https://github.com/kevinlin1/just-the-class/generate).
-1. Update `_config.yml` and `README.md` with your course information. [Be sure to update the url and baseurl](https://mademistakes.com/mastering-jekyll/site-url-baseurl/).
-1. Configure a [publishing source for GitHub Pages](https://help.github.com/en/articles/configuring-a-publishing-source-for-github-pages). Your course website is now live!
-1. Edit and create `.md` [Markdown files](https://guides.github.com/features/mastering-markdown/) to add more content pages.
+Twelve lectures organised into five units: Foundations (L1 to L4), Vision and Sequences (L5 to L6), Attention and Transformers (L7 to L8), Generative and Modern AI (L9 to L11), and Reinforcement Learning (L12).
 
-Just the Class has been used by instructors at Stanford University ([CS 161](https://stanford-cs161.github.io/winter2021/)), UC Berkeley ([Data 100](https://ds100.org/fa21/)), UC Santa Barbara ([CSW8](https://ucsb-csw8.github.io/s22/)), Northeastern University ([CS4530/5500](https://neu-se.github.io/CS4530-CS5500-Spring-2021/)), and Carnegie Mellon University ([17-450/17-950](https://cmu-crafting-software.github.io/)). Share your course website and find more examples in the [show and tell discussion](https://github.com/kevinlin1/just-the-class/discussions/categories/show-and-tell)!
+The full lecture-by-lecture breakdown is on the [lectures](lectures.md) page. Days, timings, and venue are on the [schedule](schedule.md) page.
 
-### Local development environment
+## Resources
 
-Just the Class requires no special Jekyll plugins and can run on GitHub Pages' standard Jekyll compiler. To setup a local development environment, clone your template repository and follow the GitHub Docs on [Testing your GitHub Pages site locally with Jekyll](https://docs.github.com/en/pages/setting-up-a-github-pages-site-with-jekyll/testing-your-github-pages-site-locally-with-jekyll).
+Slides for each lecture are linked from the [lectures](lectures.md) page as the course progresses. Additional reading will be posted alongside them.
+
+## Contact
+
+Reach out to any of the [instructors](instructors.md), or write to [todo@todo.com](mailto:todo@todo.com) with questions about the course. Course updates are posted on the [announcements](announcements.md) page.
