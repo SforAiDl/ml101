@@ -1,6 +1,6 @@
 ---
 name: Nidheesh Kannadasan
 role: Instructor
-email: todo@todo.com
+email: f20230310@goa.bits-pilani.ac.in
 photo: nidheesh.png
 ---

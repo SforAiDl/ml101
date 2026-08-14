@@ -49,7 +49,7 @@
 .staffer-grid {
   display: grid;
   grid-template-columns: max-content;
-  justify-content: space-between;
+  column-gap: $sp-8;
   margin-top: $sp-6;
   row-gap: $sp-6;
 
@@ -73,7 +73,8 @@
     width: 64px;
   }
 
-  // Names and emails each stay on one line; the columns are sized to fit them.
+  // Names stay on one line so the columns are sized to fit them; emails can
+  // be much longer, so they wrap instead of stretching the whole grid.
   .staffer-name {
     font-size: 0.9375rem !important;
     margin-bottom: $sp-2;
@@ -83,6 +84,18 @@
   p {
     font-size: 0.875rem;
     white-space: nowrap;
+  }
+
+  .staffer-email {
+    max-width: 180px;
+    white-space: normal;
+    word-break: break-all;
+  }
+
+  .staffer {
+    > div {
+      min-width: 0;
+    }
   }
 
   // Only the widest layout has room for larger photos and text.
