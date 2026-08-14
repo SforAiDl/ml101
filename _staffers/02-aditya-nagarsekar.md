@@ -1,6 +1,6 @@
 ---
 name: Aditya Nagarsekar
 role: Instructor
-email: todo@todo.com
+email: f20230473@goa.bits-pilani.ac.in
 photo: aditya_nagarsekar.jpg
 ---

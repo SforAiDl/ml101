@@ -1,6 +1,6 @@
 ---
 name: Kamal Manchenella
 role: Instructor
-email: todo@todo.com
+email: f20240026@goa.bits-pilani.ac.in
 photo: kamal_manchenella.jpg
 ---

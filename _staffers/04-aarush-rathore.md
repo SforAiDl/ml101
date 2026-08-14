@@ -1,6 +1,6 @@
 ---
 name: Aarush Rathore
 role: Instructor
-email: todo@todo.com
+email: f20230598@goa.bits-pilani.ac.in
 photo: aarush_rathore.jpg
 ---

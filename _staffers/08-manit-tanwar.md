@@ -1,6 +1,6 @@
 ---
 name: Manit Tanwar
 role: Instructor
-email: todo@todo.com
+email: f20230392@goa.bits-pilani.ac.in
 photo: manit_tanwar.png
 ---
