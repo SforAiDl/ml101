@@ -1,7 +1,7 @@
 ---
 title: Course announced
 week: 0
-date: 2026-08-12
+date: 2026-08-20
 ---
 
 ML 101 is running in the First Semester of 2026-27, offered by [SAiDL](https://www.saidl.in){:target="_blank" rel="noopener noreferrer"} in collaboration with the [Center for Technical Education](https://bpgc-cte.org/){:target="_blank" rel="noopener noreferrer"}.
