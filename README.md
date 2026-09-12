@@ -32,4 +32,4 @@ Slides for each lecture are linked from the [lectures](lectures.md) page as the 
 
 ## Contact
 
-Reach out to any of the [instructors](instructors.md), or write to [todo@todo.com](mailto:todo@todo.com) with questions about the course. Course updates are posted on the [announcements](announcements.md) page.
+Reach out to any of the [instructors](instructors.md) with questions about the course. Course updates are posted on the [announcements](announcements.md) page.
