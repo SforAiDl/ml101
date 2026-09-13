@@ -8,7 +8,7 @@ L1
 
 L2
 : **How ML Models Learn**: Supervised learning, loss functions, gradient descent, classifiers.
-  : Slides TBA
+  : [Slides]({{ site.baseurl }}/resources/lec2/lec2_slides.pdf){:target="_blank" rel="noopener noreferrer"} · [Notebook](https://colab.research.google.com/drive/1kpCN6BxL0u_zDZdwAOzsXr36iQoMtP4X?usp=sharing){:target="_blank" rel="noopener noreferrer"}
 
 L3
 : **Building a Neural Network**: Neural networks, backpropagation, activation functions.
