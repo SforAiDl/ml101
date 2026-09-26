@@ -10,6 +10,12 @@ L2
 : **How ML Models Learn**: Supervised learning, loss functions, gradient descent, classifiers.
   : [Slides]({{ site.baseurl }}/resources/lec2/lec2_slides.pdf){:target="_blank" rel="noopener noreferrer"} · [Notebook](https://colab.research.google.com/drive/1kpCN6BxL0u_zDZdwAOzsXr36iQoMtP4X?usp=sharing){:target="_blank" rel="noopener noreferrer"}
 
+### Supplementary Lecture
+
+Python and Numpy Tutorial
+: An interactive, step-by-step introduction to Python and NumPy.
+  : [Open Tutorial](https://sforaidl.github.io/ml101/python_numpy/){:target="_blank" rel="noopener noreferrer"}
+
 L3
 : **Building a Neural Network**: Neural networks, backpropagation, activation functions.
   : Slides TBA
