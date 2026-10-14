@@ -16,8 +16,8 @@ SL1
 
 L3
 : **Building a Neural Network**: Neural networks, backpropagation, activation functions.
-  : Slides TBA
+  : [Reference 1](https://cs231n.stanford.edu/slides/2026/lecture_4.pdf){:target="_blank" rel="noopener noreferrer"} · [Reference 2](https://docs.google.com/presentation/d/1WZGbNSqoJ-oG36gP32dc618KkHX1o_Iz8Y2cv1d_154/edit?usp=sharing){:target="_blank" rel="noopener noreferrer"}
 
 L4
 : **Making Neural Networks Learn**: Optimization, dropout, initialization, regularization.
-  : Slides TBA
+  : [Slides]({{ site.baseurl }}/resources/lec4/training-neural-networks.html){:target="_blank" rel="noopener noreferrer"}

@@ -1,0 +1,1682 @@
+<!DOCTYPE HTML>
+<html lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>Training Neural Networks</title>
+    <meta name="author" content="Aditya Nagarsekar">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="A visual, step-by-step lecture on optimization, initialization, regularization and dropout.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,400;0,700;1,400&display=swap">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+    <script>(function(){try{if(localStorage.getItem("hnnl-theme")==="dark"){document.documentElement.setAttribute("data-theme","dark");}}catch(e){}})();</script>
+    <style>
+      /* ---- Theme (same tokens as the site stylesheet) ---- */
+      :root {
+        --bg: #ffffff; --surface: #ffffff; --surface-2: #fbfbfa;
+        --fg: #333333; --fg-strong: #111111; --fg-mid: #555555; --fg-muted: #666666; --fg-faint: #767676;
+        --border: #e6e6e6; --border-soft: #ecece8;
+        --link: #1772d0; --link-hover: #f09228;
+        --code-bg: #f2f2f2;
+        --hl-bg: #fff1bf; --hl-bar: #f0b400;
+        --map-low: #bcd4ee; --map-high: #fbfbfa; --map-line: #a9a9a0;
+        --c-blue: #1772d0; --c-orange: #e08a00; --c-red: #e5322d; --c-gray: #8a8a8a;
+        --c-green: #23964a; --c-purple: #7b52c7; --c-ink: #333333; --ball: #f09228;
+        --fs: 20px;
+        color-scheme: light;
+      }
+      [data-theme="dark"] {
+        --bg: #15171b; --surface: #1c1f24; --surface-2: #202329;
+        --fg: #d7dae0; --fg-strong: #f4f6f9; --fg-mid: #b6bac2; --fg-muted: #9ba0a9; --fg-faint: #8a8f98;
+        --border: #2f333a; --border-soft: #272b31;
+        --link: #6cb0f5; --link-hover: #ffb45e;
+        --code-bg: #262a31;
+        --hl-bg: #3b3417; --hl-bar: #f0b400;
+        --map-low: #1e3a5c; --map-high: #202329; --map-line: #4d525b;
+        --c-blue: #6cb0f5; --c-orange: #ffb45e; --c-red: #ff6b66; --c-gray: #9ba0a9;
+        --c-green: #5cc97d; --c-purple: #b69cf5; --c-ink: #d7dae0; --ball: #ffb45e;
+        color-scheme: dark;
+      }
+      html { background: var(--bg); scroll-behavior: smooth; }
+      @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+      body { margin: 0; background: var(--bg); color: var(--fg); overflow-x: clip; }
+      body, td, th, tr, p, a, li, strong, button { font-family: 'Lato', Verdana, Helvetica, sans-serif; font-size: var(--fs); }
+      a { color: var(--link); text-decoration: none; }
+      a:hover, a:focus { color: var(--link-hover); }
+      :focus-visible { outline: 2px solid var(--link); outline-offset: 2px; border-radius: 3px; }
+
+      .themetoggle { position: fixed; top: 12px; right: 14px; z-index: 10; width: 38px; height: 38px; border-radius: 50%;
+        border: 1px solid var(--border); background: var(--surface); color: var(--fg-mid); cursor: pointer; display: grid; place-items: center; padding: 0; }
+      .themetoggle svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+      .themetoggle .icon-sun { display: none; }
+      [data-theme="dark"] .themetoggle .icon-sun { display: block; }
+      [data-theme="dark"] .themetoggle .icon-moon { display: none; }
+
+      /* ---- Page: big type, short beats, like slides you scroll through ---- */
+      .paper-page { max-width: 760px; width: 100%; box-sizing: border-box; margin: 0 auto; padding: 36px 20px 120px; }
+      .paper-title { font-size: clamp(32px, 5vw, 42px); font-weight: 700; line-height: 1.15; letter-spacing: -0.01em; text-align: center; margin: 64px 0 14px; color: var(--fg-strong); }
+      .paper-authors { text-align: center; margin: 0 0 8px; color: var(--fg-mid); font-size: 20px; }
+      .paper-summary { max-width: 600px; margin: 14px auto 26px; text-align: center; line-height: 1.55; color: var(--fg-muted); font-size: 18px; }
+      .toc { text-align: center; line-height: 2.1; margin: 0 0 64px; padding-bottom: 34px; border-bottom: 1px solid var(--border); color: var(--fg-faint); font-size: 17px; }
+      .toc a { margin: 0 4px; white-space: nowrap; font-size: 17px; }
+      .toc-sep { margin: 0 3px; }
+      /* parts open like chapters: a short accent line, a small "Part n" label, then the title */
+      .md h2 { font-size: clamp(30px, 4.6vw, 40px); line-height: 1.15; letter-spacing: -0.01em; margin: 128px 0 22px; color: var(--fg-strong); }
+      .md h2::before { content: ""; display: block; width: 56px; height: 3px; border-radius: 2px; background: var(--link); margin: 0 0 22px; }
+      .md h2 .eyebrow { display: block; font-size: 14px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--link); margin: 0 0 8px; }
+      .md h3 { font-size: clamp(23px, 3.2vw, 27px); line-height: 1.25; font-weight: 700; margin: 72px 0 14px; color: var(--fg-strong); }
+      .md h2 + h3 { margin-top: 28px; }
+      .md h2, .md h3 { scroll-margin-top: 28px; }
+      .md p, .md li { font-size: 21px; line-height: 1.62; }
+      .md p { margin: 0 0 18px; }
+      .md ol, .md ul { padding-left: 28px; margin: 10px 0 18px; }
+      .md li { margin: 8px 0; }
+      .md pre { background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; margin: 22px 0 26px; font-size: 15px; line-height: 1.6; overflow-x: auto; }
+      .md code { font-family: Menlo, Consolas, monospace; font-size: 15px; }
+      .md p code, .md li code, .figcap code, .tp-cap code { background: var(--code-bg); padding: 1px 5px; border-radius: 4px; font-size: 0.85em; }
+      .md .katex-display { overflow-x: auto; overflow-y: hidden; padding: 12px 0; margin: 26px 0; font-size: 1.3em; }
+      /* the key under a figure lines up with its narration */
+      .figcap, .md p.figcap { font-size: 15.5px; color: var(--fg-muted); text-align: left; margin: 10px 2px 38px 17px; line-height: 1.5; }
+      @media (min-width: 1140px) { .md .tp.wide + p.figcap { width: 1063px; margin-left: calc(50% - 523px); } }
+
+      /* ---- Step-through figures ---- */
+      .tp { display: flex; flex-direction: column; margin: 30px 0 6px; }
+      .tp-left, .tp-right { display: flex; flex-direction: column; }
+      /* in figures with a code panel, the controls, narration and key sit under the code */
+      .md .tp-right p.figcap { order: 4; margin: 12px 2px 0 17px; }
+      @media (max-width: 900px) {
+        /* one column on narrow screens: picture, controls, narration, key, then the code */
+        .tp-right { display: contents; }
+        .tp-grid > .tp-left { order: 0; }
+        .tp-grid .tp-ctl { order: 1; margin-top: -4px; }
+        .tp-grid .tp-cap { order: 2; margin-top: -4px; }
+        .md .tp-grid p.figcap { order: 3; margin: -6px 2px 0 17px; }
+        .tp-grid .codebox { order: 4; }
+      }
+      .tp-grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 16px 22px; align-items: start; }
+      @media (max-width: 900px) { .tp-grid { grid-template-columns: minmax(0, 1fr); } }
+      .tp svg, .tp canvas.fx { display: block; width: 100%; height: auto; background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; font-family: 'Lato', Verdana, Helvetica, sans-serif; }
+      .tp-ctl { order: 2; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 10px 0 0; }
+      .tp-cap { order: 3; min-height: 56px; margin: 14px 2px 0; padding: 1px 0 1px 14px; border-left: 3px solid var(--hl-bar); font-size: 18px; line-height: 1.5; color: var(--fg); }
+      .race-results { order: 4; }
+      .tp-ctl button, .chip { padding: 6px 14px; border: 1px solid var(--border); border-radius: 18px; background: var(--surface); color: var(--fg-mid); font-size: 15px; cursor: pointer; transition: border-color .15s, color .15s; }
+      .tp-ctl button[data-act="play"] { border-color: var(--link); color: var(--link); font-weight: 700; min-width: 64px; }
+      .tp-ctl button:hover, .chip:hover { border-color: var(--link-hover); color: var(--link-hover); }
+      .tp-count { margin-left: auto; font-size: 14px; color: var(--fg-faint); font-variant-numeric: tabular-nums; }
+      .chips { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 12px; font-size: 16px; color: var(--fg-muted); }
+      .chip[aria-pressed="true"] { border-color: var(--link); color: var(--link); font-weight: 700; }
+      .chips label { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; margin-left: 6px; font-size: 16px; }
+      .chips input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--link); }
+
+      /* Code panel: the running line lights up */
+      .codebox { background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 12px 12px 14px; overflow-x: auto; }
+      .codebox-title { font-weight: 700; font-size: 16px; border-bottom: 1px solid var(--border); padding: 0 4px 9px; margin-bottom: 8px; color: var(--fg-strong); }
+      .codebox .cl { font-family: Menlo, Consolas, monospace; font-size: 14.5px; line-height: 1.9; white-space: pre; border-radius: 4px; padding: 0 8px; color: var(--fg); transition: background-color .25s, box-shadow .25s, opacity .25s; }
+      .codebox .cl .cm { color: var(--fg-faint); }
+      .codebox .cl.on { background: var(--hl-bg); box-shadow: inset 4px 0 0 var(--hl-bar); color: var(--fg-strong); }
+      .codebox .cl.off { opacity: .35; }
+      .codebox .cl { position: relative; padding-left: 18px; }
+      .codebox .cl.add::before { content: "+"; position: absolute; left: 4px; color: var(--c-green); font-weight: 700; }
+      .codebox .chg, .codebox-note .chg { text-decoration: underline; text-decoration-color: var(--c-green); text-decoration-thickness: 2px; text-underline-offset: 4px; }
+      .codebox-note { font-size: 13px; color: var(--fg-muted); margin-top: 10px; }
+      .codebox-note .plus { color: var(--c-green); }
+      .lineage { margin: 18px 0 30px; overflow-x: auto; }
+      .lineage svg { display: block; width: 100%; max-width: 780px; min-width: 600px; height: auto; margin: 0 auto; font-family: 'Lato', Verdana, Helvetica, sans-serif; }
+
+      /* Wide figures leave the text column only when the window can hold them */
+      @media (min-width: 1140px) { .md .wide { width: 1080px; margin-left: calc(50% - 540px); } }
+      .legend { display: flex; flex-wrap: wrap; gap: 6px 20px; font-size: 16px; color: var(--fg-mid); margin: 10px 2px 0; font-variant-numeric: tabular-nums; }
+      .legend i { display: inline-block; width: 16px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 7px; }
+      .race-results { overflow-x: auto; margin: 16px 0 0; }
+      .race-results table { border-collapse: collapse; width: 100%; font-size: 16px; font-variant-numeric: tabular-nums; }
+      .race-results th, .race-results td { padding: 5px 10px; text-align: center; border-bottom: 1px solid var(--border); }
+      .race-results th { border-bottom: 2px solid var(--border); font-weight: 700; color: var(--fg-strong); white-space: nowrap; }
+      .race-results td { color: var(--fg-mid); }
+      .race-results td.done { color: var(--fg-strong); }
+      .race-results i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: 0; }
+      .fx-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+      @media (max-width: 640px) { .fx-row { grid-template-columns: minmax(0, 1fr); } }
+      .fx-sub, .md p.fx-sub { font-size: 15px; color: var(--fg-muted); text-align: center; margin: 6px 0 0; }
+      /* figures ease in as they arrive; nothing moves if the reader prefers reduced motion */
+      .reveal { opacity: 0; transform: translateY(16px); transition: opacity .7s ease, transform .7s ease; }
+      .reveal.shown { opacity: 1; transform: none; }
+      @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; } }
+      .progress { position: fixed; top: 0; left: 0; height: 3px; width: 100%; background: var(--link); transform-origin: 0 50%; transform: scaleX(0); z-index: 20; pointer-events: none; }
+    </style>
+  </head>
+  <body>
+    <button type="button" class="themetoggle" id="themetoggle" title="Switch between light and dark" aria-label="Switch between light and dark"><svg class="icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="icon-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.2 5.2l1.4 1.4M17.4 17.4l1.4 1.4M18.8 5.2l-1.4 1.4M6.6 17.4l-1.4 1.4"/></svg></button>
+    <div class="paper-page">
+      <h1 class="paper-title">Training Neural Networks</h1>
+      <p class="paper-authors">Aditya Nagarsekar</p>
+      <p class="paper-summary">Lecture notes on optimization, initialization, regularization and dropout. Every figure can be played, or stepped through with Next.</p>
+      <div id="content" class="md">
+        <noscript><p>This page renders its text with JavaScript.</p></noscript>
+      </div>
+
+<script type="text/markdown" id="markdown">
+A neural network has millions of adjustable numbers called weights. Think of them as knobs. The loss is a single number that measures how wrong the network is, and training means turning the knobs until the loss is small.
+
+Whether that works comes down to four things: how we turn the knobs, where they start, how we stop the network memorizing, and a trick called dropout.
+
+## Part 1: Optimization {toc: Optimization}
+
+### The loss
+
+Start with the smallest model there is: a line through some dots, with one knob that sets its slope.
+
+<div class="tp" id="fx-knob">
+<svg id="fx-knob-svg" viewBox="0 0 640 290" role="img" aria-label="A line through dots, and its loss for each slope"></svg>
+<div class="tp-cap"></div>
+<div class="tp-ctl"><button type="button" data-act="play">Play</button><button type="button" data-act="prev">&larr; Back</button><button type="button" data-act="next">Next &rarr;</button><button type="button" data-act="reset">Restart</button><span class="tp-count"></span></div>
+</div>
+<p class="figcap">Red: how far the line misses each dot. The loss adds up these misses, squared so that big misses count more.</p>
+
+Every slope has a loss, and together they trace a curve. The best slope is at its lowest point.
+
+### The loss landscape
+
+Add a second knob, the intercept, which moves the line up and down. Now every pair of settings has a loss, and we can draw it as a surface.
+
+<div class="tp" id="fx-surf">
+<canvas class="fx" id="fx-surf-canvas" role="img" aria-label="The loss for every slope and intercept, drawn as a surface, then seen from above"></canvas>
+<div class="tp-cap"></div>
+<div class="tp-ctl"><button type="button" data-act="play">Play</button><button type="button" data-act="prev">&larr; Back</button><button type="button" data-act="next">Next &rarr;</button><button type="button" data-act="reset">Restart</button><span class="tp-count"></span></div>
+</div>
+<p class="figcap">Blue is low loss, pale is high.</p>
+
+Seen from above it becomes a contour map, and that is the picture we will use from here on. A real network has millions of knobs, so we only ever draw two at a time.
+
+### Gradient descent
+
+For a real network we never get to see this map. What we can compute is the slope of the ground where we are standing, so training is like walking downhill in fog.
+
+<div class="tp wide" id="fx-train">
+<div class="tp-grid">
+<div class="tp-left">
+<canvas class="fx" id="fx-train-canvas" role="img" aria-label="Loss landscape with a ball walking downhill"></canvas>
+<div class="tp-cap"></div>
+<div class="tp-ctl"><button type="button" data-act="play">Play</button><button type="button" data-act="prev">&larr; Back</button><button type="button" data-act="next">Next &rarr;</button><button type="button" data-act="reset">Restart</button><span class="tp-count"></span></div>
+</div>
+<div class="tp-right">
+<div class="codebox" id="fx-train-code">
+<div class="codebox-title">Gradient descent</div>
+<div class="cl" data-k="init">w = random_start()              <span class="cm"># drop the ball</span></div>
+<div class="cl" data-k="for">for step in range(6):</div>
+<div class="cl" data-k="loss">    loss = loss_fn(w, all_data)  <span class="cm"># 1. measure</span></div>
+<div class="cl" data-k="back">    slope = gradient(loss, w)    <span class="cm"># 2. slope</span></div>
+<div class="cl" data-k="step">    w = w - lr * slope           <span class="cm"># 3. step</span></div>
+</div>
+</div>
+</div>
+</div>
+
+$$\text{new weights} = \text{old weights} - \text{step size} \times \text{slope}$$
+
+This is gradient descent. The step size is called the learning rate.
+
+Every optimizer that follows is gradient descent with one idea added:
+
+<div class="lineage" data-at="gd"></div>
+
+### The learning rate
+
+<div class="tp" id="fx-lr">
+<div class="chips" data-group="lr"><button type="button" class="chip" data-v="0.02">Too small</button><button type="button" class="chip" data-v="0.3" aria-pressed="true">Just right</button><button type="button" class="chip" data-v="0.9">Too big</button><button type="button" class="chip" data-v="1.04">Way too big</button></div>
+<svg id="fx-lr-svg" viewBox="0 0 640 290" role="img" aria-label="A ball stepping down a bowl"></svg>
+<div class="tp-cap"></div>
+<div class="tp-ctl"><button type="button" data-act="play">Play</button><button type="button" data-act="prev">&larr; Back</button><button type="button" data-act="next">Next &rarr;</button><button type="button" data-act="reset">Restart</button><span class="tp-count"></span></div>
+</div>
+
+Too small and training crawls; too large and it bounces around or blows up. In practice the learning rate is also lowered as training goes on.
+
+### Stochastic gradient descent
+
+<div class="lineage" data-at="sgd"></div>
+
+The exact slope needs every training example, which is slow. SGD estimates it from a small random batch instead: a little off each time, but cheap enough to take many more steps.
+
+<div class="tp wide" id="fx-sgd">
+<div class="chips" data-group="batch"><span>Examples per step:</span><button type="button" class="chip" data-v="1">1</button><button type="button" class="chip" data-v="8" aria-pressed="true">8</button><button type="button" class="chip" data-v="32">32</button><button type="button" class="chip" data-v="200">all 200</button></div>
+<div class="tp-grid">
+<div class="tp-left">
+<div class="fx-row">
+<div><svg id="fx-sgd-data" viewBox="0 0 300 240" role="img" aria-label="Training examples, the chosen few, and the current line"></svg><p class="fx-sub">The data, and our line</p></div>
+<div><canvas class="fx" id="fx-sgd-canvas" role="img" aria-label="The loss map for every possible line"></canvas><p class="fx-sub">The loss map</p></div>
+</div>
+<div class="tp-cap"></div>
+<div class="tp-ctl"><button type="button" data-act="play">Play</button><button type="button" data-act="prev">&larr; Back</button><button type="button" data-act="next">Next &rarr;</button><button type="button" data-act="reset">Restart</button><span class="tp-count"></span></div>
+</div>
+<div class="tp-right">
+<div class="codebox" id="fx-sgd-code">
+<div class="codebox-title">SGD = GD + a few examples</div>
+<div class="cl" data-k="init">w = random_start()</div>
+<div class="cl" data-k="for">for step in range(10):</div>
+<div class="cl add" data-k="loader">    batch = random_pick(all_data, <span id="fx-sgd-bs">8</span>)</div>
+<div class="cl" data-k="loss">    loss = loss_fn(w, <span class="chg">batch</span>)</div>
+<div class="cl" data-k="back">    slope = gradient(loss, w)</div>
+<div class="cl" data-k="step">    w = w - lr * slope</div>
+<div class="codebox-note"><b class="plus">+</b> new &nbsp; <span class="chg">underlined</span>: changed</div>
+</div>
+</div>
+</div>
+</div>
+<p class="figcap">Orange: the examples used in this step.</p>
+
+### Why SGD zigzags
+
+In a narrow valley the slope points mostly at the walls rather than along the floor, so SGD bounces from side to side.
+
+<div class="tp wide" id="fx-w-sgd">
+<div class="tp-grid">
+<div class="tp-left">
+<canvas class="fx" role="img" aria-label="Plain SGD zigzagging down a narrow valley"></canvas>
+<div class="tp-cap"></div>
+<div class="tp-ctl"><button type="button" data-act="play">Play</button><button type="button" data-act="prev">&larr; Back</button><button type="button" data-act="next">Next &rarr;</button><button type="button" data-act="reset">Restart</button><span class="tp-count"></span></div>
+</div>
+<div class="tp-right">
+<div class="codebox">
+<div class="codebox-title">SGD: one step</div>
+<div class="cl" data-k="slope">slope = gradient(loss, w)</div>
+<div class="cl" data-k="w">w = w - lr * slope</div>
+</div>
+</div>
+</div>
+</div>
+
+### Momentum
+
+<div class="lineage" data-at="mom"></div>
+
+Momentum keeps a running velocity, the way a heavy ball keeps rolling. Pushes that flip back and forth cancel out; pushes along the floor add up.
+
+<div class="tp wide" id="fx-w-mom">
+<div class="tp-grid">
+<div class="tp-left">
+<canvas class="fx" role="img" aria-label="Momentum rolling down a narrow valley"></canvas>
+<div class="tp-cap"></div>
+<div class="tp-ctl"><button type="button" data-act="play">Play</button><button type="button" data-act="prev">&larr; Back</button><button type="button" data-act="next">Next &rarr;</button><button type="button" data-act="reset">Restart</button><span class="tp-count"></span></div>
+</div>
+<div class="tp-right">
+<div class="codebox">
+<div class="codebox-title">Momentum = SGD + speed</div>
+<div class="cl" data-k="slope">slope = gradient(loss, w)</div>
+<div class="cl add" data-k="speed">speed = 0.9 * speed + slope</div>
+<div class="cl" data-k="w">w = w - lr * <span class="chg">speed</span></div>
+<div class="codebox-note"><b class="plus">+</b> new &nbsp; <span class="chg">underlined</span>: changed</div>
+</div>
+</div>
+</div>
+</div>
+<p class="figcap">Gray: plain SGD with the same step size.</p>
+
+### Nesterov momentum
+
+<div class="lineage" data-at="nag"></div>
+
+Nesterov momentum looks before it leaps. It measures the slope where the momentum is about to carry it, not where it stands, so it starts braking before it overshoots.
+
+<div class="tp wide" id="fx-w-nag">
+<div class="tp-grid">
+<div class="tp-left">
+<canvas class="fx" role="img" aria-label="Nesterov momentum rolling down a narrow valley"></canvas>
+<div class="tp-cap"></div>
+<div class="tp-ctl"><button type="button" data-act="play">Play</button><button type="button" data-act="prev">&larr; Back</button><button type="button" data-act="next">Next &rarr;</button><button type="button" data-act="reset">Restart</button><span class="tp-count"></span></div>
+</div>
+<div class="tp-right">
+<div class="codebox">
+<div class="codebox-title">Nesterov = momentum + look ahead</div>
+<div class="cl add" data-k="ahead">ahead = w - lr * 0.9 * speed</div>
+<div class="cl" data-k="slope">slope = gradient(loss, <span class="chg">ahead</span>)</div>
+<div class="cl" data-k="speed">speed = 0.9 * speed + slope</div>
+<div class="cl" data-k="w">w = w - lr * speed</div>
+<div class="codebox-note"><b class="plus">+</b> new &nbsp; <span class="chg">underlined</span>: changed</div>
+</div>
+</div>
+</div>
+</div>
+<p class="figcap">Gray: plain momentum with the same step size.</p>
+
+It swings far less than plain momentum.
+
+### AdaGrad
+
+<div class="lineage" data-at="ada"></div>
+
+AdaGrad gives each direction its own step size. It divides each part of the slope by the total size of all its past slopes, so steep directions get small steps and flat ones get big steps.
+
+<div class="tp wide" id="fx-w-ada">
+<div class="tp-grid">
+<div class="tp-left">
+<canvas class="fx" role="img" aria-label="AdaGrad walking along a narrow valley"></canvas>
+<div class="tp-cap"></div>
+<div class="tp-ctl"><button type="button" data-act="play">Play</button><button type="button" data-act="prev">&larr; Back</button><button type="button" data-act="next">Next &rarr;</button><button type="button" data-act="reset">Restart</button><span class="tp-count"></span></div>
+</div>
+<div class="tp-right">
+<div class="codebox">
+<div class="codebox-title">AdaGrad = SGD + own step sizes</div>
+<div class="cl" data-k="slope">slope = gradient(loss, w)</div>
+<div class="cl add" data-k="size">size = size + slope**2</div>
+<div class="cl" data-k="w">w = w - lr * slope <span class="chg">/ sqrt(size)</span></div>
+<div class="codebox-note"><b class="plus">+</b> new &nbsp; <span class="chg">underlined</span>: changed</div>
+</div>
+</div>
+</div>
+</div>
+<p class="figcap">Gray: plain SGD.</p>
+
+The totals only ever grow, so every step is a little shorter than the last. Over a long training run, AdaGrad can slow to a crawl.
+
+### RMSProp
+
+<div class="lineage" data-at="rms"></div>
+
+RMSProp lets old slopes fade from the record, so it tracks how steep each direction has been lately. The steps no longer shrink just because time has passed.
+
+<div class="tp wide" id="fx-w-rms">
+<div class="tp-grid">
+<div class="tp-left">
+<canvas class="fx" role="img" aria-label="RMSProp walking along a narrow valley"></canvas>
+<div class="tp-cap"></div>
+<div class="tp-ctl"><button type="button" data-act="play">Play</button><button type="button" data-act="prev">&larr; Back</button><button type="button" data-act="next">Next &rarr;</button><button type="button" data-act="reset">Restart</button><span class="tp-count"></span></div>
+</div>
+<div class="tp-right">
+<div class="codebox">
+<div class="codebox-title">RMSProp = AdaGrad + forgetting</div>
+<div class="cl" data-k="slope">slope = gradient(loss, w)</div>
+<div class="cl" data-k="size">size = <span class="chg">0.9 *</span> size + <span class="chg">0.1 *</span> slope**2</div>
+<div class="cl" data-k="w">w = w - lr * slope / sqrt(size)</div>
+<div class="codebox-note"><b class="plus">+</b> new &nbsp; <span class="chg">underlined</span>: changed</div>
+</div>
+</div>
+</div>
+</div>
+<p class="figcap">Gray: plain SGD.</p>
+
+### Adam
+
+<div class="lineage" data-at="adam"></div>
+
+Adam combines the two, momentum's velocity with RMSProp's per-direction step sizes. It is the usual first choice.
+
+<div class="tp wide" id="fx-w-adam">
+<div class="tp-grid">
+<div class="tp-left">
+<canvas class="fx" role="img" aria-label="Adam walking down a narrow valley"></canvas>
+<div class="tp-cap"></div>
+<div class="tp-ctl"><button type="button" data-act="play">Play</button><button type="button" data-act="prev">&larr; Back</button><button type="button" data-act="next">Next &rarr;</button><button type="button" data-act="reset">Restart</button><span class="tp-count"></span></div>
+</div>
+<div class="tp-right">
+<div class="codebox">
+<div class="codebox-title">Adam = momentum + RMSProp</div>
+<div class="cl" data-k="slope">slope = gradient(loss, w)</div>
+<div class="cl add" data-k="speed">speed = 0.9 * speed + 0.1 * slope</div>
+<div class="cl add" data-k="size">size = 0.999 * size + 0.001 * slope**2</div>
+<div class="cl" data-k="w">w = w - lr * <span class="chg">speed</span> <span class="chg">/ sqrt(size)</span></div>
+<div class="codebox-note"><b class="plus">+</b> new &nbsp; <span class="chg">underlined</span>: changed</div>
+</div>
+</div>
+</div>
+</div>
+<p class="figcap">Gray: plain SGD.</p>
+
+### A race
+
+<div class="tp wide" id="fx-race">
+<div class="chips" data-group="terrain"><button type="button" class="chip" data-v="valley" aria-pressed="true">Narrow valley</button><button type="button" class="chip" data-v="bumpy">Bump</button><button type="button" class="chip" data-v="saddle">Flat ridge</button></div>
+<canvas class="fx" id="fx-race-canvas" role="img" aria-label="Four optimizers racing downhill"></canvas>
+<div class="race-results" id="fx-race-legend"></div>
+<div class="tp-cap"></div>
+<div class="tp-ctl"><button type="button" data-act="play">Play</button><button type="button" data-act="prev">&larr; Back</button><button type="button" data-act="next">Next &rarr;</button><button type="button" data-act="reset">Restart</button><span class="tp-count"></span></div>
+</div>
+<p class="figcap">Same start and the same number of steps. Each optimizer keeps one fixed step size.</p>
+
+No optimizer wins on every landscape. Switching between them in PyTorch is a one-line change:
+
+```python
+torch.optim.SGD(params, lr=0.1)
+torch.optim.SGD(params, lr=0.1, momentum=0.9)
+torch.optim.RMSprop(params, lr=0.001)
+torch.optim.Adam(params, lr=0.001)
+```
+
+## Part 2: Initialization {toc: Initialization}
+
+Before training, every weight needs a value. Two things matter: the values should differ from each other, and they should be the right size.
+
+### Why the start must be random
+
+Two neurons that start with the same weights compute the same thing, get the same slope and receive the same update, so they stay identical forever.
+
+Below, the same small network is trained twice: once with every neuron starting the same, once with random starts.
+
+<div class="tp" id="fx-sym">
+<svg id="fx-sym-svg" viewBox="0 0 640 332" role="img" aria-label="The same small network trained from an identical start and from a random start, one step at a time"></svg>
+<div class="tp-cap"></div>
+<div class="tp-ctl"><button type="button" data-act="play">Play</button><button type="button" data-act="prev">&larr; Back</button><button type="button" data-act="next">Next &rarr;</button><button type="button" data-act="reset">Restart</button><span class="tp-count"></span></div>
+</div>
+<p class="figcap">Line thickness: how big each weight is (dashed: negative). Numbers in the circles: each neuron's output for one dot. Red: slopes.</p>
+
+### How big the starting weights should be
+
+Each layer scales the signal by roughly the same factor, and the size of the weights sets that factor. Over many layers it compounds.
+
+<div class="tp" id="fx-tel">
+<div class="chips" data-group="spread"><span>Starting weights:</span><button type="button" class="chip" data-v="0.5" aria-pressed="true">Too small</button><button type="button" class="chip" data-v="1">Just right</button><button type="button" class="chip" data-v="2">Too big</button></div>
+<svg id="fx-tel-svg" viewBox="0 0 640 250" role="img" aria-label="A ten-layer network lighting up as the signal passes through it"></svg>
+<div class="tp-cap"></div>
+<div class="tp-ctl"><button type="button" data-act="play">Play</button><button type="button" data-act="prev">&larr; Back</button><button type="button" data-act="next">Next &rarr;</button><button type="button" data-act="reset">Restart</button><span class="tp-count"></span></div>
+</div>
+<p class="figcap">The glow shows how strong the signal is at each layer.</p>
+
+The slopes travelling back through the network shrink or blow up in the same way, and training stalls.
+
+### He initialization and BatchNorm
+
+A neuron sums all of its inputs, so more inputs give a larger sum. Neurons with more inputs therefore get smaller starting weights:
+
+$$\text{spread} = \sqrt{\frac{2}{\text{number of inputs}}}$$
+
+This is He initialization. BatchNorm takes a different route: it rescales the signal after every layer, so the starting size matters much less.
+
+## Part 3: Regularization {toc: Regularization}
+
+### Overfitting
+
+A model can fit its training data perfectly and still fail on anything new. This is called overfitting.
+
+<div class="tp" id="fx-fit">
+<svg id="fx-fit-svg" viewBox="0 0 640 300" role="img" aria-label="Curves of different bendiness fitted to ten points"></svg>
+<div class="tp-cap"></div>
+<div class="tp-ctl"><button type="button" data-act="play">Play</button><button type="button" data-act="prev">&larr; Back</button><button type="button" data-act="next">Next &rarr;</button><button type="button" data-act="reset">Restart</button><span class="tp-count"></span></div>
+</div>
+<p class="figcap">Filled dots: training data. Hollow dots: new data the curve never saw.</p>
+
+### Penalizing complicated models
+
+One fix is to add a penalty to the loss, with a dial λ for how much it counts:
+
+$$\text{total loss} = \text{how wrong} + \lambda \times \text{how complicated}$$
+
+Here is the overfitting curve again as the dial goes up:
+
+<div class="tp" id="fx-pen">
+<svg id="fx-pen-svg" viewBox="0 0 640 300" role="img" aria-label="The same bendy curve as the penalty dial turns up"></svg>
+<div class="tp-cap"></div>
+<div class="tp-ctl"><button type="button" data-act="play">Play</button><button type="button" data-act="prev">&larr; Back</button><button type="button" data-act="next">Next &rarr;</button><button type="button" data-act="reset">Restart</button><span class="tp-count"></span></div>
+</div>
+
+The common choice, L2 or weight decay, shrinks all weights a little. L1 pushes useless weights to exactly zero.
+
+### Data augmentation
+
+A flipped or cropped photo of a cat is still a cat, so every training image can be reused in many altered versions.
+
+<div class="tp wide" id="fx-aug">
+<div class="tp-grid">
+<div class="tp-left">
+<svg id="fx-aug-svg" viewBox="0 0 520 286" role="img" aria-label="A cat picture and six altered versions of it"></svg>
+<div class="tp-cap"></div>
+<div class="tp-ctl"><button type="button" data-act="play">Play</button><button type="button" data-act="prev">&larr; Back</button><button type="button" data-act="next">Next &rarr;</button><button type="button" data-act="reset">Restart</button><span class="tp-count"></span></div>
+</div>
+<div class="tp-right">
+<div class="codebox" id="fx-aug-code">
+<div class="codebox-title">Data augmentation</div>
+<div class="cl" data-k="compose">transform = T.Compose([</div>
+<div class="cl" data-k="flip">    T.RandomHorizontalFlip(),</div>
+<div class="cl" data-k="crop">    T.RandomResizedCrop(224),</div>
+<div class="cl" data-k="rot">    T.RandomRotation(15),</div>
+<div class="cl" data-k="color">    T.ColorJitter(0.4),</div>
+<div class="cl" data-k="erase">    T.RandomErasing(),</div>
+<div class="cl" data-k="end">])</div>
+</div>
+</div>
+</div>
+</div>
+
+The network then learns what cats look like, rather than memorizing particular photos.
+
+## Part 4: Dropout {toc: Dropout}
+
+### Switching neurons off
+
+During training, dropout switches off a random set of neurons at every step. No neuron can count on the others being there, so what the network knows gets spread out.
+
+<div class="tp wide" id="fx-drop">
+<div class="chips" data-group="p"><span>Chance a neuron sits out:</span><button type="button" class="chip" data-v="0.2">0.2</button><button type="button" class="chip" data-v="0.5" aria-pressed="true">0.5</button><button type="button" class="chip" data-v="0.7">0.7</button></div>
+<div class="tp-grid">
+<div class="tp-left">
+<svg id="fx-drop-svg" viewBox="0 0 560 300" role="img" aria-label="A network with randomly switched-off neurons"></svg>
+<div class="tp-cap"></div>
+<div class="tp-ctl"><button type="button" data-act="play">Play</button><button type="button" data-act="prev">&larr; Back</button><button type="button" data-act="next">Next &rarr;</button><button type="button" data-act="reset">Restart</button><span class="tp-count"></span></div>
+</div>
+<div class="tp-right">
+<div class="codebox" id="fx-drop-code">
+<div class="codebox-title">Dropout</div>
+<div class="cl" data-k="model">model = nn.Sequential(</div>
+<div class="cl" data-k="model">    nn.Linear(4, 6), nn.ReLU(), nn.Dropout(<span class="fx-p">0.5</span>),</div>
+<div class="cl" data-k="model">    nn.Linear(6, 6), nn.ReLU(), nn.Dropout(<span class="fx-p">0.5</span>),</div>
+<div class="cl" data-k="model">    nn.Linear(6, 2))</div>
+<div class="cl" data-k="train">model.train()     <span class="cm"># dropout on</span></div>
+<div class="cl" data-k="eval">model.eval()      <span class="cm"># dropout off</span></div>
+</div>
+</div>
+</div>
+</div>
+
+At test time every neuron is on, which would make the signal stronger than in training. PyTorch already scales for this, so all you need is `model.eval()`.
+
+## Wrap-up {toc: Wrap-up}
+
+### Reading loss curves
+
+<div class="tp" id="fx-doc"><svg id="fx-doc-svg" viewBox="0 0 640 380" role="img" aria-label="Four loss curves and what they mean"></svg></div>
+<p class="figcap">Blue: loss on the training data. Orange: loss on data held back from training.</p>
+
+### Where to start
+
+1. He initialization, or BatchNorm
+2. Adam, or AdamW (Adam with weight decay), with a learning rate of 0.001
+3. Check that the model can overfit a tiny batch
+4. Lower the learning rate over training
+5. If it overfits, add augmentation, weight decay or dropout
+</script>
+
+      <script>
+        window.addEventListener("DOMContentLoaded", function () {
+          var src = document.getElementById("markdown").textContent;
+          // keep LaTeX out of the Markdown parser's hands
+          var math = [];
+          src = src.replace(/\$\$[\s\S]+?\$\$|\$[^\n$]+?\$/g, function (m) {
+            math.push(m); return "@@MATH" + (math.length - 1) + "@@";
+          });
+          var el = document.getElementById("content");
+          if (!window.marked) {
+            el.innerHTML = "<p>This page needs an internet connection to load its text renderer.</p>";
+            return;
+          }
+          var html = marked.parse(src, { gfm: true, breaks: false });
+          html = html.replace(/@@MATH(\d+)@@/g, function (_, i) { return math[i]; });
+          el.innerHTML = html;
+          // heading ids, and a contents strip from the headings that carry a {toc: label}
+          var toc = [];
+          el.querySelectorAll("h2, h3").forEach(function (h) {
+            var m = h.innerHTML.match(/\s*\{toc:\s*([^}]+)\}\s*$/);
+            if (m) { h.innerHTML = h.innerHTML.replace(/\s*\{toc:\s*[^}]+\}\s*$/, ""); }
+            if (!h.id) { h.id = h.textContent.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""); }
+            if (m) { toc.push({ id: h.id, label: m[1].trim() }); }
+          });
+          if (toc.length) {
+            var nav = document.createElement("nav"); nav.className = "toc"; nav.setAttribute("aria-label", "Contents");
+            nav.innerHTML = toc.map(function (t) { return '<a href="#' + t.id + '">' + t.label + '</a>'; }).join(' <span class="toc-sep">&middot;</span> ');
+            el.parentNode.insertBefore(nav, el);
+          }
+          if (window.renderMathInElement) {
+            renderMathInElement(el, {
+              delimiters: [{ left: "$$", right: "$$", display: true }, { left: "$", right: "$", display: false }],
+              ignoredTags: ["script", "noscript", "style", "textarea", "pre", "code"],
+              throwOnError: false
+            });
+          }
+          el.querySelectorAll("h2").forEach(function (h) {
+            var m = h.textContent.match(/^(Part \d+):\s*(.+)$/);
+            if (m) { h.innerHTML = '<span class="eyebrow">' + m[1] + '</span>' + m[2]; }
+          });
+          // figures with a code panel: move the controls, the narration and the key under the code
+          el.querySelectorAll(".tp-grid").forEach(function (g) {
+            var left = g.querySelector(".tp-left"), right = g.querySelector(".tp-right"); if (!left || !right) { return; }
+            ["tp-ctl", "tp-cap"].forEach(function (c) { var n = left.querySelector(":scope > ." + c); if (n) { right.appendChild(n); } });
+            var key = g.closest(".tp").nextElementSibling;
+            if (key && key.classList.contains("figcap")) { right.appendChild(key); }
+          });
+          if (window.initFigures) { window.initFigures(); }
+          // figures fade in as they reach the screen
+          if ("IntersectionObserver" in window) {
+            var io = new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add("shown"); io.unobserve(e.target); } }); }, { rootMargin: "0px 0px -8% 0px", threshold: 0.08 });
+            el.querySelectorAll(".tp, .lineage, .katex-display, pre").forEach(function (n) { n.classList.add("reveal"); io.observe(n); });
+          }
+          // a thin line at the top that fills as you read
+          var bar = document.createElement("div"); bar.className = "progress"; document.body.appendChild(bar);
+          var ticking = false;
+          function progress() { var d = document.documentElement, max = d.scrollHeight - d.clientHeight; bar.style.transform = "scaleX(" + (max > 0 ? Math.min(1, d.scrollTop / max) : 0) + ")"; ticking = false; }
+          window.addEventListener("scroll", function () { if (!ticking) { ticking = true; requestAnimationFrame(progress); } }, { passive: true });
+          progress();
+        });
+      </script>
+    </div>
+
+  <script>
+  window.initFigures = function () {
+    "use strict";
+    var root = document.documentElement;
+    function css(n) { return getComputedStyle(root).getPropertyValue(n).trim(); }
+    var redraws = [];
+    function onTheme(f) { redraws.push(f); }
+    window.addEventListener("themechange", function () { redraws.forEach(function (f) { f(); }); });
+    var NS = "http://www.w3.org/2000/svg";
+    function S(tag, attrs, parent) { var e = document.createElementNS(NS, tag); for (var k in attrs) { e.setAttribute(k, attrs[k]); } if (parent) { parent.appendChild(e); } return e; }
+    function T(x, y, str, attrs, parent) { var a = { x: x, y: y }; for (var k in attrs) { a[k] = attrs[k]; } var t = S("text", a, parent); t.textContent = str; return t; }
+    function clear(svg) { while (svg.firstChild) { svg.removeChild(svg.firstChild); } }
+    function mulberry32(a) { return function () { a |= 0; a = (a + 0x6D2B79F5) | 0; var t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+    function gaussian(r) { return function () { var u = 0; while (u === 0) { u = r(); } return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * r()); }; }
+    function rgb(h) { h = h.replace("#", ""); var n = parseInt(h, 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
+    function fmt(v) { var a = Math.abs(v); if (!isFinite(v)) { return "∞"; } if (a >= 1000) { return v.toExponential(1).replace("e+", "e"); } if (a >= 10) { return v.toFixed(0); } if (a >= 0.01) { return v.toFixed(2); } if (a === 0) { return "0"; } return v.toExponential(0).replace("e-", "e−"); }
+    function grad(f, x, y) { var h = 1e-4; return [(f(x + h, y) - f(x - h, y)) / (2 * h), (f(x, y + h) - f(x, y - h)) / (2 * h)]; }
+    function highlight(box, keys) { if (!box) { return; } box.querySelectorAll("[data-k]").forEach(function (e) { e.classList.toggle("on", keys.indexOf(e.dataset.k) >= 0); }); }
+    function chips(container, group, onPick) {
+      var g = container.querySelector('[data-group="' + group + '"]');
+      g.addEventListener("click", function (e) {
+        var b = e.target.closest("button[data-v]"); if (!b) { return; }
+        g.querySelectorAll("button[data-v]").forEach(function (x) { x.setAttribute("aria-pressed", x === b ? "true" : "false"); });
+        onPick(b.dataset.v);
+      });
+    }
+
+    // Step-through controller: Play / Back / Next / Restart, a caption and a step counter
+    function Stepper(box, o) {
+      var cap = box.querySelector(".tp-cap"), cnt = box.querySelector(".tp-count"), bPlay = box.querySelector('[data-act="play"]');
+      var i = 0, timer = null;
+      function N() { return typeof o.count === "function" ? o.count() : o.count; }
+      function show(k) { i = Math.max(0, Math.min(N() - 1, k)); var c = o.render(i); if (cap && c != null) { cap.innerHTML = c; } if (cnt) { cnt.textContent = (i + 1) + " / " + N(); } }
+      function stop() { if (timer) { clearTimeout(timer); } timer = null; bPlay.textContent = "Play"; }
+      function tick() { if (i >= N() - 1) { stop(); return; } show(i + 1); timer = setTimeout(tick, o.delay || 1000); }
+      function play() { if (timer) { stop(); return; } if (i >= N() - 1) { show(0); } bPlay.textContent = "Pause"; timer = setTimeout(tick, o.delay || 1000); }
+      bPlay.addEventListener("click", play);
+      box.querySelector('[data-act="prev"]').addEventListener("click", function () { stop(); show(i - 1); });
+      box.querySelector('[data-act="next"]').addEventListener("click", function () { stop(); show(i + 1); });
+      box.querySelector('[data-act="reset"]').addEventListener("click", function () { stop(); show(0); });
+      show(o.initial === "last" ? N() - 1 : 0);
+      return { show: show, stop: stop, redraw: function () { show(i); }, restart: function () { stop(); show(0); play(); } };
+    }
+
+    // A canvas loss landscape: shaded bands with contour lines, redrawn on resize and theme change
+    function Landscape(canvas, o) {
+      var off = document.createElement("canvas"), W = 0, H = 0, dpr = 1, cssW = 0, self = { draw: null };
+      function build() {
+        var cw = canvas.parentElement.clientWidth; if (!cw) { return false; }
+        cssW = cw; var h = Math.round(Math.min(cw / o.aspect, o.maxH || 1e9));
+        dpr = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.style.height = h + "px"; W = canvas.width = Math.round(cw * dpr); H = canvas.height = Math.round(h * dpr);
+        paint(); return true;
+      }
+      function paint() {
+        off.width = W; off.height = H; var c = off.getContext("2d"), img = c.createImageData(W, H), d = img.data;
+        var vals = new Float32Array(W * H), lo = Infinity, hi = -Infinity, x0 = o.xr[0], x1 = o.xr[1], y0 = o.yr[0], y1 = o.yr[1];
+        for (var py = 0; py < H; py++) { var y = y1 - (py + 0.5) / H * (y1 - y0); for (var px = 0; px < W; px++) { var v = o.f(x0 + (px + 0.5) / W * (x1 - x0), y); vals[py * W + px] = v; if (v < lo) { lo = v; } if (v > hi) { hi = v; } } }
+        var cl = rgb(css("--map-low")), ch = rgb(css("--map-high")), cn = rgb(css("--map-line")), nb = o.levels || 18, k = Math.max(1, Math.round(dpr));
+        var band = new Int16Array(W * H), tt = new Float32Array(W * H);
+        for (var i = 0; i < W * H; i++) { var t = Math.sqrt((vals[i] - lo) / (hi - lo + 1e-12)); tt[i] = t; band[i] = Math.floor(t * nb); }
+        for (py = 0; py < H; py++) { for (px = 0; px < W; px++) {
+          var j = py * W + px, t2 = tt[j], R = cl[0] + (ch[0] - cl[0]) * t2, G = cl[1] + (ch[1] - cl[1]) * t2, B = cl[2] + (ch[2] - cl[2]) * t2;
+          var b0 = band[j], bx = px + k < W ? band[j + k] : b0, by = py + k < H ? band[j + k * W] : b0;
+          if (bx !== b0 || by !== b0) { var al = Math.max(b0, bx, by) % 4 === 0 ? 0.75 : 0.4; R += (cn[0] - R) * al; G += (cn[1] - G) * al; B += (cn[2] - B) * al; }
+          var q = j * 4; d[q] = R; d[q + 1] = G; d[q + 2] = B; d[q + 3] = 255;
+        } }
+        c.putImageData(img, 0, 0);
+      }
+      self.set = function (p) { o.f = p.f; o.xr = p.xr; o.yr = p.yr; self.xr0 = o.xr[0]; self.xr1 = o.xr[1]; if (W) { paint(); } };
+      self.xr0 = o.xr[0]; self.xr1 = o.xr[1];
+      self.px = function (x, y) { return [(x - o.xr[0]) / (o.xr[1] - o.xr[0]) * W, (o.yr[1] - y) / (o.yr[1] - o.yr[0]) * H]; };
+      self.ctx = function () { var ctx = canvas.getContext("2d"); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, W, H); ctx.drawImage(off, 0, 0); return ctx; };
+      self.path = function (ctx, pts, color, width, alpha) {
+        if (pts.length < 2) { return; } ctx.save(); ctx.globalAlpha = alpha == null ? 1 : alpha; ctx.strokeStyle = color; ctx.lineWidth = (width || 2) * dpr; ctx.lineJoin = "round"; ctx.lineCap = "round"; ctx.beginPath();
+        pts.forEach(function (p, n) { var q = self.px(p[0], p[1]); q = [Math.max(-2 * W, Math.min(3 * W, q[0])), Math.max(-2 * H, Math.min(3 * H, q[1]))]; if (n) { ctx.lineTo(q[0], q[1]); } else { ctx.moveTo(q[0], q[1]); } });
+        ctx.stroke(); ctx.restore();
+      };
+      self.dot = function (ctx, p, color, r, ring) { var q = self.px(p[0], p[1]); ctx.beginPath(); ctx.arc(q[0], q[1], r * dpr, 0, 2 * Math.PI); ctx.fillStyle = color; ctx.fill(); if (ring !== false) { ctx.lineWidth = 2 * dpr; ctx.strokeStyle = css("--surface"); ctx.stroke(); } };
+      self.size = function () { return [W, H, dpr]; };
+      self.arrow = function (ctx, from, to, color, label, width, below) { self.arrowPx(ctx, self.px(from[0], from[1]), self.px(to[0], to[1]), color, label, width, below); };
+      self.arrowPx = function (ctx, a, b, color, label, width, below) {
+        var dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy); if (L < 3) { return; }
+        var ux = dx / L, uy = dy / L, hl = Math.min(11 * dpr, L * 0.6);
+        ctx.save(); ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = (width || 2.8) * dpr; ctx.lineCap = "round";
+        ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0] - ux * hl * 0.8, b[1] - uy * hl * 0.8); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(b[0], b[1]); ctx.lineTo(b[0] - ux * hl - uy * hl * 0.55, b[1] - uy * hl + ux * hl * 0.55); ctx.lineTo(b[0] - ux * hl + uy * hl * 0.55, b[1] - uy * hl - ux * hl * 0.55); ctx.closePath(); ctx.fill();
+        // label beside the arrow's middle; switch sides if it would leave the canvas, skip it on short arrows
+        if (label && L > 18 * dpr) {
+          ctx.font = "700 " + (14 * dpr) + "px Lato, sans-serif"; ctx.textBaseline = "middle";
+          var mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2, nx = -uy, ny = ux, side = below ? -1 : 1, tw = ctx.measureText(label).width;
+          var place = function (sd) { var tx = mx + nx * sd * 12 * dpr, right = nx * sd > 0; return { tx: tx, ty: my + ny * sd * 12 * dpr, right: right, fits: right ? tx + tw < W - 4 * dpr : tx - tw > 4 * dpr }; };
+          var pl = place(side); if (!pl.fits) { pl = place(-side); }
+          ctx.textAlign = pl.right ? "left" : "right"; ctx.fillText(label, pl.tx, Math.max(10 * dpr, Math.min(H - 10 * dpr, pl.ty)));
+        }
+        ctx.restore();
+      };
+      self.mark = function (ctx, p, shape) {
+        var q = self.px(p[0], p[1]), s = 7 * dpr; ctx.save(); ctx.strokeStyle = css("--c-ink"); ctx.lineWidth = 2.4 * dpr; ctx.beginPath();
+        if (shape === "x") { ctx.moveTo(q[0] - s, q[1] - s); ctx.lineTo(q[0] + s, q[1] + s); ctx.moveTo(q[0] + s, q[1] - s); ctx.lineTo(q[0] - s, q[1] + s); }
+        else if (shape === "square") { ctx.rect(q[0] - s * 0.8, q[1] - s * 0.8, s * 1.6, s * 1.6); }
+        else { ctx.moveTo(q[0], q[1] - s); ctx.lineTo(q[0] + s, q[1]); ctx.lineTo(q[0], q[1] + s); ctx.lineTo(q[0] - s, q[1]); ctx.closePath(); }
+        ctx.stroke(); ctx.restore();
+      };
+      self.label = function (ctx, p, text, color) { var q = self.px(p[0], p[1]); ctx.save(); ctx.font = "700 " + (15 * dpr) + "px Lato, sans-serif"; ctx.fillStyle = color; ctx.textBaseline = "bottom"; ctx.fillText(text, q[0] + 12 * dpr, q[1] - 10 * dpr); ctx.restore(); };
+      new ResizeObserver(function () { var cw = canvas.parentElement.clientWidth; if (cw && cw !== cssW) { if (build() && self.draw) { self.draw(); } } }).observe(canvas.parentElement);
+      onTheme(function () { if (W) { paint(); if (self.draw) { self.draw(); } } });
+      build();
+      return self;
+    }
+
+    // ================= Family tree of the optimizers: each one adds a single idea =================
+    (function () {
+      // [x, y, width, name] for each pill
+      var N = { gd: [46, 112, 60, "GD"], sgd: [196, 112, 66, "SGD"], mom: [370, 42, 120, "Momentum"], nag: [566, 42, 112, "Nesterov"],
+                ada: [370, 182, 104, "AdaGrad"], rms: [566, 182, 110, "RMSProp"], adam: [722, 112, 76, "Adam"] };
+      var H = 34;
+      function R(k) { var n = N[k]; return [n[0] + n[2] / 2 + 5, n[1]]; }
+      function Lft(k, dy) { var n = N[k]; return [n[0] - n[2] / 2 - 5, n[1] + (dy || 0)]; }
+      function curve(p0, p3, c1, c2) { return { p0: p0, c1: c1 || p0, c2: c2 || p3, p3: p3 }; }
+      function bez(e, t) { var u = 1 - t; return [0, 1].map(function (i) { return u * u * u * e.p0[i] + 3 * u * u * t * e.c1[i] + 3 * u * t * t * e.c2[i] + t * t * t * e.p3[i]; }); }
+      var sgdR = R("sgd"), momBR = [N.mom[0] + N.mom[2] / 2 - 14, N.mom[1] + H / 2 + 3], rmsR = R("rms");
+      // [from, to, label, geometry, where the label sits: t along the edge, dx, dy, text-anchor]
+      var E = [
+        ["gd", "sgd", "+ few examples", curve(R("gd"), Lft("sgd")), [0.5, 0, -24, "middle"]],
+        ["sgd", "mom", "+ speed", curve(sgdR, Lft("mom"), [sgdR[0] + 46, sgdR[1]], [Lft("mom")[0] - 46, N.mom[1]]), [0.5, -12, -10, "end"]],
+        ["sgd", "ada", "+ own step sizes", curve(sgdR, Lft("ada"), [sgdR[0] + 46, sgdR[1]], [Lft("ada")[0] - 46, N.ada[1]]), [0.5, -12, 20, "end"]],
+        ["mom", "nag", "+ look ahead", curve(R("mom"), Lft("nag")), [0.5, 0, -24, "middle"]],
+        ["ada", "rms", "+ forget old slopes", curve(R("ada"), Lft("rms")), [0.5, 0, 32, "middle"]],
+        ["mom", "adam", "+ own step sizes", curve(momBR, Lft("adam", -7), [momBR[0] + 30, momBR[1] + 60], [Lft("adam")[0] - 80, N.adam[1] - 7]), [0.62, 0, -12, "middle"]],
+        ["rms", "adam", "+ speed", curve(rmsR, Lft("adam", 7), [rmsR[0] + 36, rmsR[1]], [Lft("adam")[0] - 36, N.adam[1] + 7]), [0.5, 12, 8, "start"]]
+      ];
+      var ORDER = ["gd", "sgd", "mom", "nag", "ada", "rms", "adam"], NAMES = { gd: "gradient descent", sgd: "SGD", mom: "momentum", nag: "Nesterov momentum", ada: "AdaGrad", rms: "RMSProp", adam: "Adam" };
+      document.querySelectorAll(".lineage[data-at]").forEach(function (el) {
+        var at = el.dataset.at, svg = S("svg", { viewBox: "0 0 780 226", role: "img", "aria-label": "Family tree: GD, then SGD; momentum, then Nesterov; AdaGrad, then RMSProp; momentum and RMSProp combine into Adam. Now: " + NAMES[at] + "." }, el);
+        function draw() {
+          clear(svg); var blue = css("--c-blue"), faint = css("--fg-faint");
+          E.forEach(function (e) {
+            var on = e[1] === at, g = e[3], col = on ? blue : faint, lp = e[4], p = bez(g, lp[0]);
+            var end = g.p3, from = (g.c2[0] === end[0] && g.c2[1] === end[1]) ? g.p0 : g.c2;   // straight edges point from their start
+            var dir = [end[0] - from[0], end[1] - from[1]], dl = Math.hypot(dir[0], dir[1]) || 1, ux = dir[0] / dl, uy = dir[1] / dl, h = 9;
+            var tip = [end[0] - ux * h * 0.7, end[1] - uy * h * 0.7];
+            S("path", { d: "M" + g.p0.join(",") + " C" + g.c1.join(",") + " " + g.c2.join(",") + " " + tip.join(","), fill: "none", stroke: col, "stroke-width": on ? 2.6 : 1.5, opacity: on ? 1 : 0.55 }, svg);
+            S("path", { d: "M" + end[0] + "," + end[1] + " L" + (end[0] - h * ux + h * 0.5 * uy) + "," + (end[1] - h * uy - h * 0.5 * ux) + " L" + (end[0] - h * ux - h * 0.5 * uy) + "," + (end[1] - h * uy + h * 0.5 * ux) + " Z", fill: col, opacity: on ? 1 : 0.55 }, svg);
+            T(p[0] + lp[1], p[1] + lp[2] + 4, e[2], { "text-anchor": lp[3], "font-size": 13.5, "font-weight": on ? 700 : 400, fill: on ? css("--fg-strong") : css("--fg-muted") }, svg);
+          });
+          ORDER.forEach(function (k) {
+            var n = N[k], here = k === at, seen = ORDER.indexOf(k) < ORDER.indexOf(at);
+            S("rect", { x: n[0] - n[2] / 2, y: n[1] - H / 2, width: n[2], height: H, rx: H / 2, fill: here ? blue : css("--surface"), stroke: here ? blue : seen ? css("--fg-mid") : css("--border"), "stroke-width": 1.6 }, svg);
+            T(n[0], n[1] + 5.5, n[3], { "text-anchor": "middle", "font-size": 15, "font-weight": 700, fill: here ? css("--surface") : seen ? css("--fg-strong") : faint }, svg);
+          });
+        }
+        draw(); onTheme(draw);
+      });
+    })();
+
+    // ================= What is the loss? and Two knobs: a landscape (same dots) =================
+    (function () {
+      var r = mulberry32(8), g = gaussian(r), DX = [], DY = [], n = 12;
+      for (var i = 0; i < n; i++) { var x = -2 + 4 * (i + 0.5) / n + 0.12 * (r() - 0.5); DX.push(x); DY.push(1.5 * x + 0.6 * g()); }
+      function loss(tilt, shift) { var s = 0; for (var i = 0; i < n; i++) { var e = tilt * DX[i] + shift - DY[i]; s += e * e; } return s / n; }
+      var sx = 0, sy = 0, sxx = 0, sxy = 0;
+      for (i = 0; i < n; i++) { sx += DX[i]; sy += DY[i]; sxx += DX[i] * DX[i]; sxy += DX[i] * DY[i]; }
+      var best1 = sxy / sxx, tS = (n * sxy - sx * sy) / (n * sxx - sx * sx), bS = (sy - tS * sx) / n;
+
+      // --- one knob: each tilt is one line and one loss; together they make a curve ---
+      (function () {
+        var box = document.getElementById("fx-knob"); if (!box) { return; }
+        var svg = document.getElementById("fx-knob-svg"), TILTS = [0, 0.5, 1, 1.5, 2, 2.5, 3], cur = 0;
+        var PX = function (x) { return 24 + (x + 2.3) / 4.6 * 270; }, PY = function (y) { return 150 - y / 5 * 120; };
+        var CX = function (t) { return 380 + (t + 0.5) / 4 * 240; }, CY = function (L) { return 250 - L / 6.5 * 210; };
+        function draw() {
+          clear(svg); var faint = css("--fg-faint"), last = cur === TILTS.length, tilt = last ? best1 : TILTS[cur];
+          var defs = S("defs", {}, svg), cp = S("clipPath", { id: "fx-knob-clip" }, defs); S("rect", { x: 10, y: 40, width: 300, height: 236 }, cp);
+          S("line", { x1: PX(-2.3), x2: PX(2.3), y1: PY(0), y2: PY(0), stroke: css("--border") }, svg);
+          S("line", { x1: PX(0), x2: PX(0), y1: 40, y2: 276, stroke: css("--border") }, svg);
+          var lineG = S("g", { "clip-path": "url(#fx-knob-clip)" }, svg);
+          DX.forEach(function (x, i) { S("line", { x1: PX(x), x2: PX(x), y1: PY(DY[i]), y2: PY(tilt * x), stroke: css("--c-red"), "stroke-width": 2.4 }, lineG); });
+          S("line", { x1: PX(-2.3), y1: PY(-2.3 * tilt), x2: PX(2.3), y2: PY(2.3 * tilt), stroke: css("--c-blue"), "stroke-width": 3 }, lineG);
+          DX.forEach(function (x, i) { S("circle", { cx: PX(x), cy: PY(DY[i]), r: 5.5, fill: css("--c-ink"), stroke: css("--surface"), "stroke-width": 1.5 }, svg); });
+          T(24, 26, "slope " + (last ? best1.toFixed(2) : tilt), { "font-size": 17, "font-weight": 700, fill: css("--fg-strong") }, svg);
+          // right: the loss for each tilt tried so far
+          S("line", { x1: CX(-0.5), x2: CX(3.5), y1: CY(0), y2: CY(0), stroke: css("--border") }, svg);
+          S("line", { x1: CX(-0.5), x2: CX(-0.5), y1: CY(0), y2: 36, stroke: css("--border") }, svg);
+          [0, 1, 2, 3].forEach(function (t) { T(CX(t), CY(0) + 17, String(t), { "text-anchor": "middle", "font-size": 12, fill: faint }, svg); });
+          T(CX(3.5), CY(0) + 36, "slope →", { "text-anchor": "end", "font-size": 14, fill: faint }, svg);
+          T(CX(-0.5) + 6, 30, "loss", { "font-size": 14, fill: faint }, svg);
+          if (last) {
+            var d = ""; for (var t = -0.5; t <= 3.5001; t += 0.05) { d += (d ? "L" : "M") + CX(t).toFixed(1) + "," + CY(Math.min(6.5, loss(t, 0))).toFixed(1); }
+            S("path", { d: d, fill: "none", stroke: css("--c-blue"), "stroke-width": 2.6 }, svg);
+          }
+          for (var k = 0; k < Math.min(cur + 1, TILTS.length); k++) {
+            var now = !last && k === cur;
+            S("circle", { cx: CX(TILTS[k]), cy: CY(loss(TILTS[k], 0)), r: now ? 8 : 5, fill: css("--ball"), opacity: now ? 1 : 0.6, stroke: now ? css("--surface") : "none", "stroke-width": 2 }, svg);
+          }
+          if (!last) { var cx = CX(tilt), cy = CY(loss(tilt, 0)); S("line", { x1: cx, x2: cx, y1: cy + 9, y2: CY(0), stroke: faint, "stroke-dasharray": "3 3" }, svg); }
+          else { var bx = CX(best1), by = CY(loss(best1, 0)); S("circle", { cx: bx, cy: by, r: 8, fill: css("--c-green"), stroke: css("--surface"), "stroke-width": 2 }, svg); T(bx, by - 16, "best", { "text-anchor": "middle", "font-size": 15, "font-weight": 700, fill: css("--fg-strong") }, svg); }
+        }
+        Stepper(box, { count: TILTS.length + 1, delay: 1100, render: function (i) {
+          cur = i; draw();
+          if (i === TILTS.length) { return "All slopes together trace a curve. The best slope is at the bottom."; }
+          var t = TILTS[i], word = t < best1 - 0.3 ? "Too flat." : t > best1 + 0.3 ? "Too steep." : "Close to the dots.";
+          return "<b>Slope " + t + ":</b> " + word.toLowerCase() + " Loss " + loss(t, 0).toFixed(2) + ".";
+        } });
+        onTheme(draw);
+      })();
+
+      // --- two knobs: the loss as a surface, then tilt the view until we look straight down ---
+      (function () {
+        var box = document.getElementById("fx-surf"); if (!box) { return; }
+        var canvas = document.getElementById("fx-surf-canvas"), xr = [tS - 2.2, tS + 2.2], yr = [bS - 2, bS + 2];
+        var land = Landscape(canvas, { f: loss, xr: xr, yr: yr, aspect: 1.6, maxH: 420 });
+        var N = 30, Lg = [], lo = Infinity, hi = -Infinity;
+        for (var i = 0; i < N; i++) { Lg.push([]); for (var j = 0; j < N; j++) { var v = loss(xr[0] + (xr[1] - xr[0]) * i / (N - 1), yr[0] + (yr[1] - yr[0]) * j / (N - 1)); Lg[i].push(v); lo = Math.min(lo, v); hi = Math.max(hi, v); } }
+        var VIEWS = [{ el: 16, az: -40 }, { el: 34, az: -30 }, { el: 62, az: -14 }, { el: 90, az: 0 }];
+        var view = { el: 16, az: -40 }, step = 0, anim = 0, ZS = 1.15;
+        function axisText(ctx, text, x, y, align, alpha) { var k = land.size()[2]; ctx.save(); ctx.globalAlpha = alpha; ctx.font = "700 " + (14 * k) + "px Lato, sans-serif"; ctx.fillStyle = css("--fg-mid"); ctx.textAlign = align; ctx.textBaseline = "middle"; ctx.fillText(text, x, y); ctx.restore(); }
+        function draw3D() {
+          var sz = land.size(), W = sz[0], H = sz[1], k = sz[2]; if (!W) { return; }
+          var A = W / H, ctx = canvas.getContext("2d"); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, W, H);
+          var el = view.el * Math.PI / 180, az = view.az * Math.PI / 180, ce = Math.cos(el), se = Math.sin(el), ca = Math.cos(az), sa = Math.sin(az);
+          function proj(X, Y, Z) { var x1 = X * ca - Y * sa, y1 = X * sa + Y * ca; return [x1, y1 * se + Z * ce, y1 * ce - Z * se]; }   // screen x, screen y, depth
+          var pts = [], mnx = Infinity, mxx = -Infinity, mny = Infinity, mxy = -Infinity;
+          for (var i = 0; i < N; i++) { pts.push([]); for (var j = 0; j < N; j++) {
+            var p = proj((-1 + 2 * i / (N - 1)) * A, -1 + 2 * j / (N - 1), ZS * (Lg[i][j] - lo) / (hi - lo));
+            pts[i].push(p); mnx = Math.min(mnx, p[0]); mxx = Math.max(mxx, p[0]); mny = Math.min(mny, p[1]); mxy = Math.max(mxy, p[1]);
+          } }
+          // fit to the canvas; the margin closes as we reach the top view, so it lines up with the flat map
+          var q = (view.el - 16) / 74, pad = 0.84 + 0.16 * q * q, s = Math.min(W * pad / (mxx - mnx), H * pad / (mxy - mny));
+          var ox = W / 2 - (mnx + mxx) / 2 * s, oy = H / 2 + (mny + mxy) / 2 * s;
+          function scr(p) { return [ox + p[0] * s, oy - p[1] * s]; }
+          var quads = [];
+          for (i = 0; i < N - 1; i++) { for (j = 0; j < N - 1; j++) {
+            // light from the front-left, so the bowl's walls read as walls; it fades out as we reach the top view
+            var gx = 2 * A / (N - 1), gy = 2 / (N - 1), dzx = ZS * (Lg[i + 1][j] - Lg[i][j]) / (hi - lo), dzy = ZS * (Lg[i][j + 1] - Lg[i][j]) / (hi - lo);
+            var nx = -dzx / gx, ny = -dzy / gy, nl = Math.hypot(nx, ny, 1), lit = Math.max(0, (nx * -0.45 + ny * -0.55 + 0.7) / nl / 1.0);
+            quads.push({ i: i, j: j, d: (pts[i][j][2] + pts[i + 1][j][2] + pts[i][j + 1][2] + pts[i + 1][j + 1][2]) / 4,
+              t: Math.sqrt(((Lg[i][j] + Lg[i + 1][j] + Lg[i][j + 1] + Lg[i + 1][j + 1]) / 4 - lo) / (hi - lo)),
+              shade: 1 - (1 - q) * 0.32 * (1 - Math.min(1, lit)) });
+          } }
+          quads.sort(function (a, b) { return b.d - a.d; });   // far quads first
+          var cl = rgb(css("--map-low")), ch = rgb(css("--map-high")), cn = css("--map-line"), gridA = 0.6 * (1 - q);
+          quads.forEach(function (u) {
+            var a = scr(pts[u.i][u.j]), b = scr(pts[u.i + 1][u.j]), c = scr(pts[u.i + 1][u.j + 1]), d = scr(pts[u.i][u.j + 1]);
+            var col = "rgb(" + [0, 1, 2].map(function (m) { return Math.round((cl[m] + (ch[m] - cl[m]) * u.t) * u.shade); }).join(",") + ")";
+            ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.lineTo(c[0], c[1]); ctx.lineTo(d[0], d[1]); ctx.closePath();
+            ctx.fillStyle = col; ctx.fill(); ctx.strokeStyle = col; ctx.lineWidth = 0.8; ctx.stroke();
+            if (gridA > 0.02) { ctx.globalAlpha = gridA; ctx.strokeStyle = cn; ctx.lineWidth = k; ctx.stroke(); ctx.globalAlpha = 1; }
+          });
+          if (view.el >= 55) { var m = scr(proj(((tS - xr[0]) / (xr[1] - xr[0]) * 2 - 1) * A, (bS - yr[0]) / (yr[1] - yr[0]) * 2 - 1, 0)), sm = 7 * k; ctx.save(); ctx.strokeStyle = css("--c-ink"); ctx.lineWidth = 2.4 * k; ctx.beginPath(); ctx.moveTo(m[0] - sm, m[1] - sm); ctx.lineTo(m[0] + sm, m[1] + sm); ctx.moveTo(m[0] + sm, m[1] - sm); ctx.lineTo(m[0] - sm, m[1] + sm); ctx.stroke(); ctx.restore(); }
+          if (q < 0.95) {
+            var fa = scr(pts[Math.floor(N / 2)][0]), fb = scr(pts[N - 1][Math.floor(N / 2)]);
+            axisText(ctx, "slope →", fa[0], fa[1] + 20 * k, "center", 1 - q);
+            axisText(ctx, "intercept →", fb[0] + 12 * k, fb[1] + 16 * k, "left", 1 - q);
+            axisText(ctx, "height = loss", 12 * k, 18 * k, "left", 1 - q);
+          }
+        }
+        function drawTop() {
+          var ctx = land.ctx(), sz = land.size(), W = sz[0], H = sz[1], k = sz[2];
+          land.mark(ctx, [tS, bS], "x");
+          axisText(ctx, "slope →", W - 12 * k, H - 16 * k, "right", 1);
+          axisText(ctx, "↑ intercept", 12 * k, 18 * k, "left", 1);
+        }
+        function draw() { if (step === VIEWS.length - 1 && !anim) { drawTop(); } else { draw3D(); } }
+        land.draw = draw;
+        var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        function goTo(target) {
+          if (anim) { cancelAnimationFrame(anim); anim = 0; }
+          var from = { el: view.el, az: view.az }, t0 = null;
+          if (reduce || (from.el === target.el && from.az === target.az)) { view = { el: target.el, az: target.az }; draw(); return; }
+          function frame(ts) {
+            if (t0 === null) { t0 = ts; }
+            var u = Math.min(1, (ts - t0) / 750), e = u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2;
+            view = { el: from.el + (target.el - from.el) * e, az: from.az + (target.az - from.az) * e };
+            if (u < 1) { anim = requestAnimationFrame(frame); draw3D(); } else { anim = 0; draw(); }
+          }
+          anim = requestAnimationFrame(frame);
+        }
+        var CAP = [
+          "Each point is one pair of settings. Its height is the loss.",
+          "It is a bowl, lowest where the line fits the dots best.",
+          "Now look at it from directly above.",
+          "From above it is a contour map: each line joins points with equal loss. × marks the best settings."
+        ];
+        Stepper(box, { count: VIEWS.length, delay: 1600, render: function (i) { step = i; goTo(VIEWS[i]); return CAP[i]; } });
+      })();
+    })();
+
+    // ================= Training is walking downhill =================
+    (function () {
+      var box = document.getElementById("fx-train"); if (!box) { return; }
+      var a = 20 * Math.PI / 180, ca = Math.cos(a), sa = Math.sin(a);
+      function f(x, y) { var u = ca * x + sa * y, v = -sa * x + ca * y; return 0.5 * (0.6 * u * u + 2.2 * v * v); }
+      var land = Landscape(document.getElementById("fx-train-canvas"), { f: f, xr: [-3, 3], yr: [-2, 2], aspect: 1.5, maxH: 440 });
+      var code = document.getElementById("fx-train-code"), lr = 0.4, K = 6, P = [[-2.5, 1.25]];
+      for (var k = 0; k < K; k++) { var g = grad(f, P[k][0], P[k][1]); P.push([P[k][0] - lr * g[0], P[k][1] - lr * g[1]]); }
+      var cur = 0;
+      function draw() {
+        var i = cur, ctx = land.ctx(), last = 1 + 3 * K, it = Math.floor((i - 1) / 3) + 1, ph = (i - 1) % 3;
+        land.mark(ctx, [0, 0], "x");
+        var at = i === 0 ? 0 : i === last ? K : (ph === 2 ? it : it - 1);
+        land.path(ctx, P.slice(0, at + 1), css("--ball"), 2.4, 0.85);
+        P.slice(0, at).forEach(function (p) { land.dot(ctx, p, css("--ball"), 3.5, false); });
+        if (i > 0 && i < last && ph === 1) { var p = P[it - 1], gg = grad(f, p[0], p[1]), n = Math.hypot(gg[0], gg[1]); land.arrow(ctx, p, [p[0] - gg[0] / n * 0.95, p[1] - gg[1] / n * 0.95], css("--c-red"), "downhill"); }
+        if (i > 0 && i < last && ph === 2) { land.arrow(ctx, P[it - 1], P[it], css("--c-ink"), null, 2.2); }
+        land.dot(ctx, P[at], css("--ball"), 9);
+        if (i > 0 && i < last && ph === 0) { land.label(ctx, P[at], "loss " + f(P[at][0], P[at][1]).toFixed(2), css("--c-ink")); }
+      }
+      land.draw = draw;
+      Stepper(box, { count: 2 + 3 * K, delay: 1100, render: function (i) {
+        cur = i; draw(); var last = 1 + 3 * K;
+        if (i === 0) { highlight(code, ["init", "opt"]); return "Random start: the orange ball. × is the lowest point."; }
+        if (i === last) { highlight(code, []); return "Close to the bottom. Real training repeats this millions of times."; }
+        var it = Math.floor((i - 1) / 3) + 1, ph = (i - 1) % 3, p = P[ph === 2 ? it : it - 1], L = f(p[0], p[1]).toFixed(2);
+        if (ph === 0) { highlight(code, ["for", "loss"]); return "<b>Step " + it + ": measure.</b> The loss is " + L + "."; }
+        if (ph === 1) { highlight(code, ["back"]); return "<b>Step " + it + ": feel the slope.</b> The red arrow points downhill."; }
+        highlight(code, ["step"]); return "<b>Step " + it + ": step.</b> The loss is now " + L + ".";
+      } });
+    })();
+
+    // ================= How big a step? =================
+    (function () {
+      var box = document.getElementById("fx-lr"); if (!box) { return; }
+      var svg = document.getElementById("fx-lr-svg"), lr = 0.3, STEPS = 12, xs = [];
+      function sim() { xs = [-2.6]; for (var k = 0; k < STEPS; k++) { var x = xs[k]; xs.push(x - lr * 2 * x); } }
+      var X = function (x) { return 40 + (x + 3.2) / 6.4 * 560; }, Y = function (v) { return 266 - Math.min(v, 10.5) / 10.5 * 236; };
+      var cur = 0;
+      function draw() {
+        clear(svg); var i = cur, faint = css("--fg-faint"), ball = css("--ball");
+        var d = ""; for (var x = -3.2; x <= 3.2001; x += 0.05) { d += (d ? "L" : "M") + X(x).toFixed(1) + "," + Y(x * x).toFixed(1); }
+        S("line", { x1: 30, x2: 610, y1: 266, y2: 266, stroke: css("--border") }, svg);
+        S("path", { d: d, fill: "none", stroke: css("--c-blue"), "stroke-width": 2.6 }, svg);
+        T(X(0), 284, "bottom", { "text-anchor": "middle", "font-size": 14, fill: faint }, svg);
+        for (var k = 1; k <= i; k++) {
+          var xa = Math.max(-3.4, Math.min(3.4, xs[k - 1])), xb = Math.max(-3.4, Math.min(3.4, xs[k])), ya = Y(xa * xa), yb = Y(xb * xb), mx = (X(xa) + X(xb)) / 2, my = Math.min(ya, yb) - 28 - Math.abs(X(xb) - X(xa)) * 0.1;
+          S("path", { d: "M" + X(xa) + "," + ya + " Q" + mx + "," + my + " " + X(xb) + "," + yb, fill: "none", stroke: faint, "stroke-width": 1.4, opacity: 0.8 }, svg);
+        }
+        for (k = 0; k < i; k++) { var xk = Math.max(-3.4, Math.min(3.4, xs[k])); S("circle", { cx: X(xk), cy: Y(xk * xk), r: 4, fill: ball, opacity: 0.5 }, svg); }
+        var xi = xs[i], off = Math.abs(xi) > 3.2, xc = Math.max(-3.2, Math.min(3.2, xi));
+        S("circle", { cx: X(xc), cy: Y(xc * xc), r: 11, fill: ball, stroke: css("--surface"), "stroke-width": 2 }, svg);
+        if (off) { T(X(xc) + (xi > 0 ? -16 : 16), Y(xc * xc) + 30, "off the chart!", { "text-anchor": xi > 0 ? "end" : "start", "font-size": 16, "font-weight": 700, fill: css("--c-red") }, svg); }
+      }
+      sim();
+      var st = Stepper(box, { count: STEPS + 1, delay: 650, render: function (i) {
+        cur = i; draw(); var L = xs[i] * xs[i];
+        if (i === 0) { return "Start high on the left wall. The bottom is in the middle."; }
+        var s = "<b>Step " + i + ".</b> Loss " + fmt(L) + ".";
+        if (i === STEPS) { s += lr < 0.05 ? " Barely moved." : lr <= 0.5 ? " At the bottom." : lr < 1 ? " Bouncing from wall to wall." : " Blowing up."; }
+        return s;
+      } });
+      chips(box, "lr", function (v) { lr = +v; sim(); st.restart(); });
+      onTheme(draw);
+    })();
+
+    // ================= A few examples at a time =================
+    (function () {
+      var box = document.getElementById("fx-sgd"); if (!box) { return; }
+      var r = mulberry32(3), g = gaussian(r), n = 200, X = [], Yv = [];
+      for (var i = 0; i < n; i++) { var x = 1.2 * g(); X.push(x); Yv.push(1.5 * x + 1 + 0.8 * g()); }
+      var sx = 0, sy = 0, sxx = 0, sxy = 0, syy = 0;
+      for (i = 0; i < n; i++) { sx += X[i]; sy += Yv[i]; sxx += X[i] * X[i]; sxy += X[i] * Yv[i]; syy += Yv[i] * Yv[i]; }
+      sx /= n; sy /= n; sxx /= n; sxy /= n; syy /= n;
+      function loss(w, b) { return 0.5 * (w * w * sxx + 2 * w * b * sx + b * b + syy - 2 * w * sxy - 2 * b * sy); }
+      var det = sxx - sx * sx, wS = (sxy - sx * sy) / det, bS = sy - wS * sx;
+      var land = Landscape(document.getElementById("fx-sgd-canvas"), { f: loss, xr: [wS - 2.4, wS + 2.4], yr: [bS - 2.2, bS + 2.2], aspect: 1.25, maxH: 320 });
+      function gradOn(w, b, idx) { var gw = 0, gb = 0; idx.forEach(function (j) { var e = w * X[j] + b - Yv[j]; gw += e * X[j]; gb += e; }); return [gw / idx.length, gb / idx.length]; }
+      var all = []; for (i = 0; i < n; i++) { all.push(i); }
+      var B = 8, K = 10, lr = 0.35, path, batches, gF;
+      function sim() {
+        var rr = mulberry32(11 + B), p = [wS - 1.9, bS + 1.7]; path = [p]; batches = []; gF = [];
+        for (var k = 0; k < K; k++) {
+          var idx = [], used = {}; if (B >= n) { idx = all.slice(); } else { while (idx.length < B) { var j = Math.floor(rr() * n); if (!used[j]) { used[j] = 1; idx.push(j); } } }
+          var gb = gradOn(p[0], p[1], idx); batches.push(idx); gF.push(gradOn(p[0], p[1], all));
+          p = [p[0] - lr * gb[0], p[1] - lr * gb[1]]; path.push(p);
+        }
+      }
+      var dsvg = document.getElementById("fx-sgd-data"), cur = 0;
+      var DX = function (x) { return 20 + (x + 4) / 8 * 270; }, DY = function (y) { return 225 - (y + 6) / 14 * 215; };
+      function drawData(w, b, idx) {
+        clear(dsvg); var faint = css("--fg-faint");
+        var sel = {}; (idx || []).forEach(function (j) { sel[j] = 1; });
+        for (var j = 0; j < n; j++) { if (!sel[j] || (idx && idx.length === n)) { S("circle", { cx: DX(X[j]), cy: DY(Yv[j]), r: 2.5, fill: faint, opacity: 0.55 }, dsvg); } }
+        if (idx && idx.length < n) { idx.forEach(function (j) { S("circle", { cx: DX(X[j]), cy: DY(Yv[j]), r: 6, fill: css("--c-orange"), stroke: css("--surface"), "stroke-width": 1.5 }, dsvg); }); }
+        S("line", { x1: DX(-4), y1: DY(-4 * w + b), x2: DX(4), y2: DY(4 * w + b), stroke: css("--c-blue"), "stroke-width": 3 }, dsvg);
+      }
+      // the first two steps are split into "pick" and "step"; after that, one frame per step
+      var FR = []; for (var k = 0; k < K; k++) { if (k < 2) { FR.push({ k: k, ph: "pick" }, { k: k, ph: "step" }); } else { FR.push({ k: k, ph: "both" }); } }
+      function draw() {
+        var i = cur, fr = FR[i - 1] || null, at = i === 0 ? 0 : !fr ? K : (fr.ph === "pick" ? fr.k : fr.k + 1);
+        var ctx = land.ctx(); land.mark(ctx, [wS, bS], "x");
+        land.path(ctx, path.slice(0, at + 1), css("--c-blue"), 2.2, 0.9);
+        path.slice(0, at).forEach(function (p) { land.dot(ctx, p, css("--c-blue"), 3.2, false); });
+        if (fr && fr.ph !== "pick") { var p0 = path[fr.k]; land.arrow(ctx, p0, [p0[0] - lr * gF[fr.k][0], p0[1] - lr * gF[fr.k][1]], css("--c-gray"), null, 2.4); land.arrow(ctx, p0, path[fr.k + 1], css("--c-red"), null, 2.8); }
+        land.dot(ctx, path[at], css("--c-blue"), 8);
+        drawData(path[at][0], path[at][1], fr ? batches[fr.k] : null);
+      }
+      land.draw = draw;
+      sim();
+      var code = document.getElementById("fx-sgd-code");
+      var st = Stepper(box, { count: FR.length + 2, delay: 1000, render: function (i) {
+        cur = i; draw();
+        if (i === 0) { highlight(code, ["init"]); return "Left: the data and our line. Right: the loss map. × is the best line."; }
+        if (i === FR.length + 1) { highlight(code, []); return "Close to the best line."; }
+        var fr = FR[i - 1], it = fr.k + 1, few = B >= n ? "all 200" : B + " at random";
+        if (fr.ph === "pick") { highlight(code, ["for", "loader"]); return "<b>Step " + it + ":</b> pick " + few + "."; }
+        if (fr.ph === "step") { highlight(code, ["loss", "back", "step"]); return "<b>Step " + it + ":</b> step using just those (red). Gray: what all 200 would say."; }
+        highlight(code, ["for", "loader", "loss", "back", "step"]); return "<b>Step " + it + ":</b> pick " + few + ", step.";
+      } });
+      chips(box, "batch", function (v) { B = +v; var bs = document.getElementById("fx-sgd-bs"); if (bs) { bs.textContent = B; } sim(); st.restart(); });
+      onTheme(function () { draw(); });
+    })();
+
+    // ================= One optimizer at a time, on the same narrow valley =================
+    var VALLEY = function (x, y) { return 0.5 * (0.1 * x * x + 3 * y * y); }, START = [-2.6, 1.3];
+    // one step-by-step record per step: where it starts, the slope, the momentum part (if any), the step taken
+    function simulate(kind, lr, K) {
+      var recs = [], w = START.slice(), v = [0, 0], m = [0, 0], s = [0, 0];
+      for (var t = 1; t <= K; t++) {
+        var rec = { w0: w.slice() }, g, step;
+        if (kind === "nag") { rec.blue = [-lr * 0.9 * v[0], -lr * 0.9 * v[1]]; rec.ahead = add2(w, rec.blue); g = grad(VALLEY, rec.ahead[0], rec.ahead[1]); }
+        else { g = grad(VALLEY, w[0], w[1]); }
+        rec.g = g; rec.red = [-lr * g[0], -lr * g[1]];
+        if (kind === "sgd") { step = rec.red; }
+        if (kind === "mom") { rec.blue = [-lr * 0.9 * v[0], -lr * 0.9 * v[1]]; v = [0.9 * v[0] + g[0], 0.9 * v[1] + g[1]]; step = [-lr * v[0], -lr * v[1]]; }
+        if (kind === "nag") { v = [0.9 * v[0] + g[0], 0.9 * v[1] + g[1]]; step = [-lr * v[0], -lr * v[1]]; }
+        if (kind === "ada") { s = [s[0] + g[0] * g[0], s[1] + g[1] * g[1]]; step = [-lr * g[0] / Math.sqrt(s[0]), -lr * g[1] / Math.sqrt(s[1])]; }
+        if (kind === "rms") { s = [0.9 * s[0] + 0.1 * g[0] * g[0], 0.9 * s[1] + 0.1 * g[1] * g[1]]; step = [-lr * g[0] / Math.sqrt(s[0]), -lr * g[1] / Math.sqrt(s[1])]; }
+        if (kind === "adam") {
+          m = [0.9 * m[0] + 0.1 * g[0], 0.9 * m[1] + 0.1 * g[1]]; s = [0.999 * s[0] + 0.001 * g[0] * g[0], 0.999 * s[1] + 0.001 * g[1] * g[1]];
+          var mh = [m[0] / (1 - Math.pow(0.9, t)), m[1] / (1 - Math.pow(0.9, t))], sh = [s[0] / (1 - Math.pow(0.999, t)), s[1] / (1 - Math.pow(0.999, t))];
+          rec.blue = [-lr * mh[0], -lr * mh[1]]; step = [-lr * mh[0] / (Math.sqrt(sh[0]) + 1e-8), -lr * mh[1] / (Math.sqrt(sh[1]) + 1e-8)];
+        }
+        rec.step = step; w = add2(w, step); rec.w1 = w.slice();
+        rec.wall = Math.abs(g[1]) > 2 * Math.abs(g[0]);   // does the slope point mostly at the wall?
+        rec.up = VALLEY(w[0], w[1]) > VALLEY(rec.w0[0], rec.w0[1]);
+        rec.firstUp = rec.up && !recs.some(function (q) { return q.up; });
+        recs.push(rec);
+      }
+      return recs;
+    }
+    function add2(a, b) { return [a[0] + b[0], a[1] + b[1]]; }
+    function OptWalk(id, cfg) {
+      var box = document.getElementById(id); if (!box) { return; }
+      // framed tightly around where the walkers go, so every arrow is drawn large and in place
+      var land = Landscape(box.querySelector("canvas"), { f: VALLEY, xr: [-2.8, 0.3], yr: [-1.35, 1.58], aspect: 1.3, maxH: 460 });
+      var code = box.querySelector(".codebox"), K = cfg.K, lr = cfg.lr, recs = simulate(cfg.kind, lr, K);
+      // the gray ghost: the method this one builds on, from the same start
+      var ghost = cfg.ghost ? [START].concat(simulate(cfg.ghost.kind, cfg.ghost.lr, K).map(function (r) { return r.w1; })) : null;
+      // a few steps are taken apart into their moves; the rest get one frame each
+      var FR = [], EXPLAIN = cfg.explain || [0, 1];
+      for (var k = 0; k < K; k++) { var full = EXPLAIN.indexOf(k) >= 0; (full ? cfg.phases : ["move"]).forEach(function (ph) { FR.push({ k: k, ph: ph, full: full }); }); }
+      var cur = 0;
+      function add(a, b) { return [a[0] + b[0], a[1] + b[1]]; }
+      function dashed(ctx, a, b, color, width, alpha) {
+        var A = land.px(a[0], a[1]), B = land.px(b[0], b[1]), k = land.size()[2];
+        ctx.save(); ctx.globalAlpha = alpha == null ? 1 : alpha; ctx.strokeStyle = color; ctx.lineWidth = (width || 2.6) * k; ctx.setLineDash([6 * k, 4 * k]);
+        ctx.beginPath(); ctx.moveTo(A[0], A[1]); ctx.lineTo(B[0], B[1]); ctx.stroke(); ctx.restore();
+      }
+      function draw() {
+        var i = cur, fr = FR[i - 1] || null, ctx = land.ctx(), color = css(cfg.color);
+        land.mark(ctx, [0, 0], "x");
+        var at = i === 0 ? 0 : !fr ? K : (fr.ph === "move" ? fr.k + 1 : fr.k);
+        var pts = [START].concat(recs.slice(0, at).map(function (r) { return r.w1; }));
+        if (ghost) { land.path(ctx, ghost.slice(0, at + 1), css("--c-gray"), 2, 0.5); land.dot(ctx, ghost[at], css("--c-gray"), 5.5, false); }
+        land.path(ctx, pts, color, 2.6, 0.95);
+        pts.slice(0, -1).forEach(function (p) { land.dot(ctx, p, color, 3.5, false); });
+        land.dot(ctx, pts[pts.length - 1], color, 8);
+        if (!fr || !fr.full || fr.ph === "move") { return; }
+        var r = recs[fr.k], p0 = r.w0, ph = fr.ph, red = css("--c-red"), blue = css("--c-purple"), ink = css("--c-ink"), mine = css(cfg.color), strong = css("--fg-strong");
+        var sz = land.size(), Wc = sz[0], Hc = sz[1], dk = sz[2], perPx = (land.xr1 - land.xr0) / Wc * dk, boxes = [];
+        // labels go in the first spot (from a short list) that stays on the canvas and clears the labels already placed
+        function put(p, text, color, cands) {
+          var q = land.px(p[0], p[1]); ctx.save(); ctx.font = "700 " + (13 * dk) + "px Lato, sans-serif";
+          var tw = ctx.measureText(text).width, th = 16 * dk, pick = null, fallback = null;
+          for (var c = 0; c < cands.length && !pick; c++) {
+            var dx = cands[c][0] * dk, dy = cands[c][1] * dk, x = q[0] + dx, y = q[1] + dy, x0 = dx > 0 ? x : dx < 0 ? x - tw : x - tw / 2, bx = [x0 - 2 * dk, y - th / 2, x0 + tw + 2 * dk, y + th / 2];
+            var inside = bx[0] > 2 * dk && bx[2] < Wc - 2 * dk && bx[1] > 2 * dk && bx[3] < Hc - 2 * dk;
+            var clear = boxes.every(function (o) { return bx[2] < o[0] || bx[0] > o[2] || bx[3] < o[1] || bx[1] > o[3]; });
+            if (inside && clear) { pick = { x: x, y: y, dx: dx, bx: bx }; }
+            else if (inside && !fallback) { fallback = { x: x, y: y, dx: dx, bx: bx }; }
+          }
+          if (!pick) { var d0 = cands[0]; pick = fallback || { x: q[0] + d0[0] * dk, y: q[1] + d0[1] * dk, dx: d0[0], bx: [0, 0, 0, 0] }; }
+          boxes.push(pick.bx);
+          ctx.textBaseline = "middle"; ctx.textAlign = pick.dx > 0 ? "left" : pick.dx < 0 ? "right" : "center";
+          ctx.lineWidth = 4 * dk; ctx.lineJoin = "round"; ctx.strokeStyle = css("--surface-2"); ctx.strokeText(text, pick.x, pick.y);
+          ctx.fillStyle = color; ctx.fillText(text, pick.x, pick.y); ctx.restore();
+        }
+        function mid(a, b) { return [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]; }
+        var SIDE = [[14, 0], [-14, 0], [0, -16], [0, 16]];
+        // a move split into its along-the-valley and across-the-valley parts, drawn as an L from the ball
+        function L(vec, color, alpha, names) {
+          var corner = [p0[0] + vec[0], p0[1]], end = add(p0, vec);
+          dashed(ctx, p0, corner, color, 3, alpha); dashed(ctx, corner, end, color, 3, alpha);
+          if (names) { put(mid(p0, corner), names[0], color, vec[1] < 0 ? [[0, -16], [0, 16], [14, -12]] : [[0, 16], [0, -16], [14, 12]]); put(mid(corner, end), names[1], color, vec[0] >= 0 ? [[10, 0], [-10, 0]] : [[-10, 0], [10, 0]]); }
+        }
+        if (cfg.kind === "sgd") { if (ph === "slope") { land.arrow(ctx, p0, add(p0, r.red), red, null); put(mid(p0, add(p0, r.red)), "slope", red, SIDE); } return; }
+        if (cfg.kind === "mom" || cfg.kind === "nag") {
+          var last = recs[fr.k - 1];
+          if (ph === "look") {
+            var ah = r.ahead, qa = land.px(ah[0], ah[1]);
+            land.arrow(ctx, p0, ah, blue, null, 5); ctx.save(); ctx.globalAlpha = 1; ctx.strokeStyle = css("--c-ink"); ctx.lineWidth = 2 * dk; ctx.setLineDash([3 * dk, 3 * dk]); ctx.beginPath(); ctx.arc(qa[0], qa[1], 8 * dk, 0, 2 * Math.PI); ctx.stroke(); ctx.restore();
+            land.arrow(ctx, ah, add(ah, r.red), red, null, 4.5);
+            put(ah, "look ahead", strong, [[-14, 0], [14, 0], [0, 20], [0, -20]]);
+            put(add(ah, r.red), "slope there", red, [[14, 0], [14, -18], [14, 18], [-14, 0]]);
+          }
+          if (ph === "slope") { land.arrow(ctx, p0, add(p0, r.red), red, null); put(mid(p0, add(p0, r.red)), "slope", red, SIDE); }
+          if (ph === "keep") {
+            land.path(ctx, [last.w0, p0], css("--hl-bar"), 9, 0.45);
+            land.arrow(ctx, p0, add(p0, r.blue), blue, null, 3);
+            put(mid(last.w0, p0), "last step", strong, SIDE);
+            put(mid(p0, add(p0, r.blue)), "90% of last step", blue, SIDE);
+          }
+          if (ph === "add") {
+            // momentum as a wide faint arrow (for Nesterov the slope was measured at its tip), the slope added at its end (nudged right so it never hides it), the result in bold black
+            var tip = add(p0, r.blue), off = [11 * perPx, 0], end = add(add(tip, r.red), off);
+            land.arrow(ctx, p0, tip, blue, null, 5);
+            land.arrow(ctx, add(tip, off), end, red, null, 3);
+            land.arrow(ctx, p0, r.w1, ink, null, 2.4);
+            put(r.w1, "new step", strong, [[-14, 0], [0, 22], [14, 0], [0, -22]]);
+            put(mid(p0, tip), "momentum", blue, [[-14, 0], [14, 0], [-14, -20], [14, -20]]);
+            put(end, "+ slope", red, [[14, 0], [14, -20], [14, 20], [0, 22], [0, -22], [-14, 0]]);
+          }
+          return;
+        }
+        // RMSProp and Adam: split a move into its two parts, resize each part, join them again
+        var base = cfg.kind === "adam" ? r.blue : r.red, baseCol = cfg.kind === "adam" ? blue : red;
+        if (ph === "slope") { land.arrow(ctx, p0, add(p0, r.red), red, null); put(mid(p0, add(p0, r.red)), "slope", red, SIDE); }
+        if (ph === "split") { land.arrow(ctx, p0, add(p0, r.red), red, null, 2); L(r.red, red, 1, ["along", "across"]); }
+        if (ph === "average") { land.arrow(ctx, p0, add(p0, r.red), red, null, 2); land.arrow(ctx, p0, add(p0, r.blue), blue, null, 3); put(add(p0, r.blue), "average", blue, [[14, 0], [-14, 0], [0, 16]]); put(add(p0, r.red), "slope", red, [[-14, 0], [14, 0], [0, -16]]); }
+        if (ph === "size") { L(base, baseCol, 1, cfg.kind === "ada" ? ["along: small so far", "across: big so far"] : ["along: small lately", "across: big lately"]); }
+        if (ph === "rescale") { L(base, baseCol, 0.3); L(r.step, mine, 1, ["along: longer", "across: shorter"]); }
+        if (ph === "combine") { L(r.step, mine, 0.35); land.arrow(ctx, p0, r.w1, ink, null, 2.8); put(mid(p0, r.w1), "step", strong, [[-14, 6], [14, -6], [0, 16]]); }
+      }
+      land.draw = draw;
+      Stepper(box, { count: FR.length + 2, delay: 1100, render: function (i) {
+        cur = i; draw();
+        if (i === 0) { highlight(code, []); return cfg.intro; }
+        if (i === FR.length + 1) { highlight(code, []); return cfg.outro; }
+        var fr = FR[i - 1], r = recs[fr.k];
+        highlight(code, fr.full ? cfg.code[fr.ph] : cfg.code.all);
+        return "<b>Step " + (fr.k + 1) + ".</b> " + cfg.say(fr.ph, fr.k, r, fr.full);
+      } });
+    }
+    OptWalk("fx-w-sgd", { kind: "sgd", lr: 0.55, K: 10, color: "--c-gray", phases: ["slope", "move"], code: { slope: ["slope"], move: ["w"], all: ["slope", "w"] },
+      intro: "Steep walls above and below, a gentle floor in between. × is the bottom.",
+      outro: "After ten steps it is still far from ×.",
+      say: function (ph, k, r, full) {
+        if (ph === "slope") { return "The slope (red) points at the wall."; }
+        return full ? "Step across the valley, not along it." : r.wall ? "Still zigzagging." : "Near the floor, creeping along.";
+      } });
+    OptWalk("fx-w-mom", { kind: "mom", lr: 0.08, K: 15, color: "--c-blue", ghost: { kind: "sgd", lr: 0.08 }, explain: [1, 4], phases: ["slope", "keep", "add", "move"],
+      code: { slope: ["slope"], keep: ["speed"], add: ["speed"], move: ["w"], all: ["slope", "speed", "w"] },
+      intro: "Same valley. Gray: plain SGD with the same step size.",
+      outro: "Same step size, much further along than plain SGD.",
+      say: function (ph, k, r, full) {
+        if (ph === "slope") { return k === 1 ? "Measure the slope here (red)." : "Measure the slope here (red). The ball has overshot the floor, so the slope points back."; }
+        if (ph === "keep") { return "Take the last step (highlighted) and keep 90% of it (purple). That is the ball's momentum."; }
+        if (ph === "add") { return k === 1 ? "Add the slope. Both point the same way, so the new step (black) is longer: the ball speeds up." : "Add the slope. It points against the momentum, so the new step (black) is shorter: the swing slows down."; }
+        if (full) { return "Take the new step."; }
+        return k === 0 ? "No momentum yet, so the first step just follows the slope." : r.firstUp ? "It overshoots, like a ball rolling up the far side." : r.up ? "Still swinging." : "Rolling on.";
+      } });
+    OptWalk("fx-w-nag", { kind: "nag", lr: 0.08, K: 15, color: "--c-blue", ghost: { kind: "mom", lr: 0.08 }, explain: [1, 3], phases: ["keep", "look", "add", "move"],
+      code: { keep: ["ahead"], look: ["ahead", "slope"], add: ["speed"], move: ["w"], all: ["ahead", "slope", "speed", "w"] },
+      intro: "Same valley. Gray: plain momentum with the same step size.",
+      outro: "It swings far less than plain momentum, and ends up just as far along.",
+      say: function (ph, k, r, full) {
+        if (ph === "keep") { return "Take the last step (highlighted) and keep 90% of it (purple), as momentum does."; }
+        if (ph === "look") { return k === 1 ? "Look ahead: measure the slope where that momentum would land, not where the ball is now." : "Look ahead: the landing point is already past the floor, so the slope there points back."; }
+        if (ph === "add") { return k === 1 ? "Add that slope. It points the same way, so the new step (black) is longer." : "Add that slope. The ball starts braking before it crosses the floor: the new step (black) is shorter."; }
+        if (full) { return "Take the new step."; }
+        return k === 0 ? "No momentum yet, so the first step just follows the slope." : r.up ? "A small swing." : "Rolling on.";
+      } });
+    OptWalk("fx-w-ada", { kind: "ada", lr: 0.5, K: 10, color: "--c-purple", ghost: { kind: "sgd", lr: 0.55 }, explain: [0, 1], phases: ["slope", "split", "size", "rescale", "combine", "move"],
+      code: { slope: ["slope"], split: ["slope"], size: ["size"], rescale: ["w"], combine: ["w"], move: ["w"], all: ["slope", "size", "w"] },
+      intro: "Same valley. Gray: plain SGD.",
+      outro: "Good direction, but each step is shorter than the last: the totals only grow.",
+      say: function (ph, k, r, full) {
+        if (ph === "slope") { return "Measure the slope here (red)."; }
+        if (ph === "split") { return "Split it into two parts: across the valley and along it. Across is long, along is tiny."; }
+        if (ph === "size") { return k === 0 ? "AdaGrad adds up how big each part has been, over every step so far." : "Add this slope to the totals. They only ever grow."; }
+        if (ph === "rescale") { return "Divide each part by its total. Across gets shorter; along gets much longer."; }
+        if (ph === "combine") { return "Join the two parts again. The step (black) points along the valley."; }
+        return full ? "Take the step." : "Along the floor, each step a little shorter.";
+      } });
+    OptWalk("fx-w-rms", { kind: "rms", lr: 0.15, K: 10, color: "--c-green", ghost: { kind: "sgd", lr: 0.55 }, explain: [0, 1], phases: ["slope", "split", "size", "rescale", "combine", "move"],
+      code: { slope: ["slope"], split: ["slope"], size: ["size"], rescale: ["w"], combine: ["w"], move: ["w"], all: ["slope", "size", "w"] },
+      intro: "Same valley. Gray: plain SGD.",
+      outro: "It walks along the floor. Because old slopes fade from its record, its steps won't shrink to nothing in a long run.",
+      say: function (ph, k, r, full) {
+        if (ph === "slope") { return "Measure the slope here (red)."; }
+        if (ph === "split") { return "Split it into two parts: across the valley and along it. Across is long, along is tiny."; }
+        if (ph === "size") { return k === 0 ? "RMSProp keeps a record of how big each part has been lately. Old slopes fade out of it." : "The record now includes this slope too. Across is still big, along still small."; }
+        if (ph === "rescale") { return "Divide each part by its record. Across gets shorter; along gets much longer."; }
+        if (ph === "combine") { return "Join the two parts again. The step (black) now points along the valley."; }
+        return full ? "Take the step." : "Along the floor.";
+      } });
+    OptWalk("fx-w-adam", { kind: "adam", lr: 0.3, K: 8, color: "--c-orange", ghost: { kind: "sgd", lr: 0.55 }, explain: [0, 5], phases: ["slope", "average", "size", "rescale", "combine", "move"],
+      code: { slope: ["slope"], average: ["speed"], size: ["size"], rescale: ["w"], combine: ["w"], move: ["w"], all: ["slope", "speed", "size", "w"] },
+      intro: "Same valley. Gray: plain SGD.",
+      outro: "Much closer to × than plain SGD.",
+      say: function (ph, k, r, full) {
+        if (ph === "slope") { return k === 0 ? "Measure the slope here (red)." : "Measure the slope here (red). It is small, because the ball is near the floor."; }
+        if (ph === "average") { return k === 0 ? "Mix it into a running average of recent slopes (purple). On the first step the average is just the slope." : "Mix it into the running average (purple). It remembers the steeper slopes from before, so it is longer than today's slope."; }
+        if (ph === "size") { return "Split the average into its two parts, and look up how big each part has been lately."; }
+        if (ph === "rescale") { return "Divide each part by its record. Across gets shorter; along gets longer."; }
+        if (ph === "combine") { return "Join the parts again. That is the step (black)."; }
+        return full ? "Take the step." : "Heading for the bottom.";
+      } });
+
+    // ================= The race =================
+    (function () {
+      var box = document.getElementById("fx-race"); if (!box) { return; }
+      var TER = {
+        valley: { f: function (x, y) { return 0.5 * (0.03 * x * x + 4 * y * y); }, xr: [-3, 3], yr: [-2, 2], s: [-2.7, 1.2], fmin: 0, lr: [0.45, 0.08, 0.05, 0.1], goals: [[0, 0]], T: 150 },
+        bumpy: { f: function (x, y) { return (x * x - 4) * (x * x - 4) / 16 + 0.3 * x + y * y; }, xr: [-3.2, 3.2], yr: [-2, 2], s: [2.9, 1.2], fmin: -0.6203, lr: [0.1, 0.1, 0.05, 0.05], goals: [[-2.135, 0]], trap: [1.827, 0], T: 120 },
+        saddle: { f: function (x, y) { return 0.5 * x * x - 0.5 * y * y + 0.25 * y * y * y * y; }, xr: [-3, 3], yr: [-2, 2], s: [-2.6, 1e-5], fmin: -0.25, lr: [0.1, 0.1, 0.05, 0.05], goals: [[0, 1], [0, -1]], flat: [0, 0], T: 150 }
+      };
+      var OPT = [{ name: "SGD", color: "--c-gray" }, { name: "Momentum", color: "--c-blue" }, { name: "RMSProp", color: "--c-green" }, { name: "Adam", color: "--c-orange" }];
+      var DESC = { valley: "A long, narrow valley.", bumpy: "A trap on the right. The real bottom is on the left.", saddle: "Balanced on a flat ridge between two valleys." };
+      var tname = "valley", ter = TER[tname], paths = [], fin = [], land = null, STRIDE = 2, TAIL = 14, cur = 0;
+      var canvas = document.getElementById("fx-race-canvas"), board = document.getElementById("fx-race-legend");
+      function sim() {
+        paths = OPT.map(function (_, o) {
+          var p = ter.s.slice(), v = [0, 0], m = [0, 0], s2 = [0, 0], out = [p.slice()], lr = ter.lr[o];
+          for (var t = 1; t <= ter.T; t++) {
+            var g = grad(ter.f, p[0], p[1]);
+            for (var k = 0; k < 2; k++) {
+              if (o === 0) { p[k] -= lr * g[k]; }
+              else if (o === 1) { v[k] = 0.9 * v[k] + g[k]; p[k] -= lr * v[k]; }
+              else if (o === 2) { s2[k] = 0.9 * s2[k] + 0.1 * g[k] * g[k]; p[k] -= lr * g[k] / (Math.sqrt(s2[k]) + 1e-8); }
+              else { m[k] = 0.9 * m[k] + 0.1 * g[k]; s2[k] = 0.999 * s2[k] + 0.001 * g[k] * g[k]; p[k] -= lr * (m[k] / (1 - Math.pow(0.9, t))) / (Math.sqrt(s2[k] / (1 - Math.pow(0.999, t))) + 1e-8); }
+            }
+            out.push(p.slice());
+          }
+          return out;
+        });
+        // the step at which each walker first reaches the bottom (or null)
+        fin = paths.map(function (pa) { for (var k = 0; k < pa.length; k++) { if (ter.f(pa[k][0], pa[k][1]) - ter.fmin < 0.01) { return k; } } return null; });
+      }
+      function trapped(o, t) { return ter.trap && fin[o] === null && t >= ter.T * 0.5 && Math.abs(paths[o][t][0] - ter.trap[0]) < 0.4; }
+      function tag(ctx, p, text, dx, dy) {
+        var q = land.px(p[0], p[1]), k = land.size()[2];
+        ctx.save(); ctx.font = "700 " + (13 * k) + "px Lato, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.lineWidth = 4 * k; ctx.strokeStyle = css("--surface-2"); ctx.strokeText(text, q[0] + dx * k, q[1] + dy * k);
+        ctx.fillStyle = css("--fg-mid"); ctx.fillText(text, q[0] + dx * k, q[1] + dy * k); ctx.restore();
+      }
+      function flag(ctx, p) {
+        var q = land.px(p[0], p[1]), k = land.size()[2], w = 18 * k, h = 12 * k, top = q[1] - 26 * k;
+        ctx.save(); ctx.strokeStyle = css("--c-ink"); ctx.lineWidth = 2 * k; ctx.beginPath(); ctx.moveTo(q[0], q[1]); ctx.lineTo(q[0], top); ctx.stroke();
+        for (var a = 0; a < 4; a++) { for (var b = 0; b < 2; b++) { ctx.fillStyle = (a + b) % 2 ? css("--surface") : css("--c-ink"); ctx.fillRect(q[0] + a * w / 4, top + b * h / 2, w / 4, h / 2); } }
+        ctx.lineWidth = 1.2 * k; ctx.strokeRect(q[0], top, w, h); ctx.restore();
+      }
+      function draw() {
+        var t = Math.min(cur * STRIDE, ter.T), ctx = land.ctx(), k = land.size()[2];
+        ter.goals.forEach(function (g) { flag(ctx, g); tag(ctx, g, "bottom", 0, 16); });
+        if (ter.trap) { land.mark(ctx, ter.trap, "square"); tag(ctx, ter.trap, "trap", 0, 20); }
+        if (ter.flat) { land.mark(ctx, ter.flat, "diamond"); tag(ctx, ter.flat, "flat spot", 0, 20); }
+        var sq = land.px(ter.s[0], ter.s[1]); ctx.save(); ctx.strokeStyle = css("--c-ink"); ctx.lineWidth = 2 * k; ctx.beginPath(); ctx.arc(sq[0], sq[1], 7 * k, 0, 2 * Math.PI); ctx.stroke(); ctx.restore();
+        tag(ctx, ter.s, "start", 0, ter.s[1] > 0.5 ? -18 : 20);
+        // faint full path, then a bold tail behind each ball
+        OPT.forEach(function (op, o) { land.path(ctx, paths[o].slice(0, t + 1), css(op.color), 1.6, 0.35); });
+        OPT.forEach(function (op, o) { land.path(ctx, paths[o].slice(Math.max(0, t - TAIL), t + 1), css(op.color), 3.2, 0.95); });
+        OPT.forEach(function (op, o) { land.dot(ctx, paths[o][t], css(op.color), 8.5); });
+        // leaderboard: fixed order, each card fills in with its place when it finishes
+        var done = fin.map(function (f, o) { return f !== null && f <= t ? { o: o, f: f } : null; }).filter(Boolean).sort(function (a, b) { return a.f - b.f; });
+        var ORD = ["1st", "2nd", "3rd", "4th"], table = document.createElement("table"), hr = table.insertRow(), br = table.insertRow();
+        OPT.forEach(function (op, o) {
+          var th = document.createElement("th"), sw = document.createElement("i"), td = br.insertCell(), place = -1;
+          done.forEach(function (d, r) { if (d.o === o) { place = r; } });
+          sw.style.background = css(op.color); th.appendChild(sw); th.appendChild(document.createTextNode(op.name)); hr.appendChild(th);
+          td.textContent = place >= 0 ? ORD[place] + ", step " + fin[o] : trapped(o, t) ? "stuck in the trap" : "not there yet";
+          if (place >= 0) { td.className = "done"; }
+        });
+        board.textContent = ""; board.appendChild(table);
+      }
+      function verdict() {
+        var done = fin.map(function (f, o) { return f !== null ? { o: o, f: f } : null; }).filter(Boolean).sort(function (a, b) { return a.f - b.f; });
+        if (!done.length) { return "Nobody reached the bottom."; }
+        if (ter.trap && done.length === 1) { return "Only " + OPT[done[0].o].name + " had the speed to roll over the bump."; }
+        return "First to the bottom: " + OPT[done[0].o].name + (done.length > 1 ? ", then " + OPT[done[1].o].name : "") + ".";
+      }
+      function setup() { ter = TER[tname]; sim(); if (!land) { land = Landscape(canvas, { f: ter.f, xr: ter.xr, yr: ter.yr, aspect: 1.8, maxH: 520 }); land.draw = draw; } else { land.set({ f: ter.f, xr: ter.xr, yr: ter.yr }); } }
+      setup();
+      var st = Stepper(box, { count: function () { return Math.floor(ter.T / STRIDE) + 1; }, delay: 60, initial: "last", render: function (i) {
+        cur = i; draw(); var t = Math.min(i * STRIDE, ter.T);
+        if (i === 0) { return DESC[tname] + " Press Play."; }
+        if (t >= ter.T) { return "<b>Finished.</b> " + verdict(); }
+        return "<b>Step " + t + ".</b> " + DESC[tname];
+      } });
+      chips(box, "terrain", function (v) { tname = v; setup(); st.restart(); });
+    })();
+
+    // ================= Rule 1: start them different =================
+    (function () {
+      var box = document.getElementById("fx-sym"); if (!box) { return; }
+      // the task: say "yes" inside a round patch of dots, "no" outside. Each neuron is one straight dividing line.
+      var r = mulberry32(5), D = [];
+      for (var i = 0; i < 90; i++) { var a = r() * 4 - 2, b = r() * 4 - 2; D.push([a, b, a * a + b * b < 1.3 ? 1 : -1]); }
+      var n = D.length;
+      function train(W1, B1, W2, b2, iters, lr, every) {
+        var snaps = [];
+        function snapshot() {
+          var L = 0, ok = 0;
+          D.forEach(function (d) { var y = b2; for (var j = 0; j < 4; j++) { y += W2[j] * Math.tanh(W1[j][0] * d[0] + W1[j][1] * d[1] + B1[j]); } L += 0.5 * (y - d[2]) * (y - d[2]); if ((y > 0) === (d[2] > 0)) { ok++; } });
+          snaps.push({ W1: W1.map(function (w) { return w.slice(); }), B1: B1.slice(), W2: W2.slice(), b2: b2, loss: L / n, acc: ok / n });
+        }
+        snapshot();
+        for (var it = 1; it <= iters; it++) {
+          var gW1 = [[0, 0], [0, 0], [0, 0], [0, 0]], gB1 = [0, 0, 0, 0], gW2 = [0, 0, 0, 0], gb2 = 0;
+          D.forEach(function (d) {
+            var h = [], y = b2; for (var j = 0; j < 4; j++) { h[j] = Math.tanh(W1[j][0] * d[0] + W1[j][1] * d[1] + B1[j]); y += W2[j] * h[j]; }
+            var e = y - d[2]; gb2 += e;
+            for (j = 0; j < 4; j++) { gW2[j] += e * h[j]; var dz = e * W2[j] * (1 - h[j] * h[j]); gW1[j][0] += dz * d[0]; gW1[j][1] += dz * d[1]; gB1[j] += dz; }
+          });
+          for (var j = 0; j < 4; j++) { W1[j][0] -= lr * gW1[j][0] / n; W1[j][1] -= lr * gW1[j][1] / n; B1[j] -= lr * gB1[j] / n; W2[j] -= lr * gW2[j] / n; }
+          b2 -= lr * gb2 / n;
+          if (it === 1 || it % every === 0) { snapshot(); }
+        }
+        return snaps;
+      }
+      var eq = train([[0.6, -0.5], [0.6, -0.5], [0.6, -0.5], [0.6, -0.5]], [0.2, 0.2, 0.2, 0.2], [0.3, 0.3, 0.3, 0.3], 0, 3000, 0.2, 300);
+      var rg = gaussian(mulberry32(12));
+      var rnd = train([0, 1, 2, 3].map(function () { return [rg(), rg()]; }), [0, 1, 2, 3].map(function () { return 0.5 * rg(); }), [0, 1, 2, 3].map(function () { return 0.5 * rg(); }), 0, 3000, 0.2, 300);
+      function identical(s) { for (var j = 1; j < 4; j++) { if (Math.abs(s.W1[j][0] - s.W1[0][0]) > 1e-9 || Math.abs(s.W1[j][1] - s.W1[0][1]) > 1e-9 || Math.abs(s.B1[j] - s.B1[0]) > 1e-9) { return false; } } return true; }
+      // the slope of the loss for each neuron's two incoming weights, over all the dots
+      function slopes(s) {
+        var gW = [[0, 0], [0, 0], [0, 0], [0, 0]];
+        D.forEach(function (d) {
+          var h = [], y = s.b2; for (var j = 0; j < 4; j++) { h[j] = Math.tanh(s.W1[j][0] * d[0] + s.W1[j][1] * d[1] + s.B1[j]); y += s.W2[j] * h[j]; }
+          var e = y - d[2]; for (j = 0; j < 4; j++) { var dz = e * s.W2[j] * (1 - h[j] * h[j]); gW[j][0] += dz * d[0]; gW[j][1] += dz * d[1]; }
+        });
+        return gW.map(function (g) { return [g[0] / n, g[1] / n]; });
+      }
+      var DOT = D.filter(function (d) { return d[2] > 0 && Math.abs(d[0]) > 0.3 && Math.abs(d[1]) > 0.3; })[0];
+      function out(s, j) { return Math.tanh(s.W1[j][0] * DOT[0] + s.W1[j][1] * DOT[1] + s.B1[j]); }
+      function f2(v) { return (v < 0 ? "−" : "") + Math.abs(v).toFixed(2); }
+      // one training step taken apart, then a jump ahead
+      var FR = [
+        { snap: 0, show: "w", when: "before training" }, { snap: 0, show: "val", when: "before training" }, { snap: 0, show: "slope", when: "before training" },
+        { snap: 1, show: "update", when: "after 1 step" }, { snap: 2, show: "val", when: "after 300 steps" }, { snap: eq.length - 1, show: "val", when: "after 3000 steps" },
+        { snap: eq.length - 1, show: "collapse", when: "after 3000 steps" }
+      ];
+      var svg = document.getElementById("fx-sym-svg"), cur = 0, merge = 0, anim = 0;   // merge: 0 = four neurons apart, 1 = merged into one
+      function panel(ox, oy, title, s, fr) {
+        var ix = ox + 36, nx = ox + 148, qx = ox + 258, iy = [oy + 128, oy + 192], ny = [62, 126, 190, 254].map(function (y) { return oy + y; }), qy = oy + 158, same = identical(s);
+        // identical neurons slide together into one
+        var m = fr.show === "collapse" && same ? merge : 0, one = m > 0.97;
+        ny = ny.map(function (y) { return y + (qy - y) * m; });
+        var ink = css("--fg-mid"), faint = css("--fg-faint"), strong = css("--fg-strong"), values = fr.show !== "w", sl = fr.show === "slope" ? slopes(s) : null;
+        T(ox + 146, oy + 24, title, { "text-anchor": "middle", "font-size": 17, "font-weight": 700, fill: strong }, svg);
+        // inputs to neurons: thickness is the size of the weight, dashed when it is negative
+        for (var j = 0; j < 4; j++) { for (var q = 0; q < 2; q++) {
+          var w = s.W1[j][q];
+          S("line", { x1: ix, y1: iy[q], x2: nx, y2: ny[j], stroke: fr.show === "update" ? css("--link") : ink, "stroke-width": 0.8 + 3.4 * Math.min(1, Math.abs(w) / 2), "stroke-dasharray": w < 0 ? "5 4" : "none", opacity: 0.85 }, svg);
+        } }
+        for (j = 0; j < 4; j++) { S("line", { x1: nx, y1: ny[j], x2: qx, y2: qy, stroke: one ? ink : faint, "stroke-width": one ? 3.4 : 1.2, opacity: 0.7 }, svg); }
+        iy.forEach(function (y, q) {
+          S("circle", { cx: ix, cy: y, r: 15, fill: css("--surface"), stroke: ink, "stroke-width": 1.5 }, svg);
+          if (values) { T(ix, y + 4, (DOT[q] < 0 ? "−" : "") + Math.abs(DOT[q]).toFixed(1), { "text-anchor": "middle", "font-size": 11, "font-weight": 700, fill: strong }, svg); }
+        });
+        T(ix, oy + 226, "input", { "text-anchor": "middle", "font-size": 12, fill: faint }, svg);
+        S("circle", { cx: qx, cy: qy, r: 13, fill: css("--surface"), stroke: ink, "stroke-width": 1.5 }, svg);
+        T(qx, qy + 30, "output", { "text-anchor": "middle", "font-size": 12, fill: faint }, svg);
+        ny.forEach(function (y, j) {
+          if (one && j > 0) { return; }
+          S("circle", { cx: nx, cy: y, r: one ? 23 : 19, fill: css("--surface"), stroke: strong, "stroke-width": one ? 2.6 : 1.8 }, svg);
+          if (values && (m === 0 || one)) { T(nx, y + 4.5, f2(out(s, j)), { "text-anchor": "middle", "font-size": 12, "font-weight": 700, fill: strong }, svg); }
+          if (one) { T(nx, y - 32, "4 in 1", { "text-anchor": "middle", "font-size": 13, "font-weight": 700, fill: css("--link") }, svg); }
+          if (sl) {
+            var t = T(nx + 26, y + (j < 2 ? -18 : 28), "slope " + f2(sl[j][0]) + ", " + f2(sl[j][1]), { "font-size": 12.5, "font-weight": 700, fill: css("--c-red"), stroke: css("--surface-2"), "stroke-width": 4, "paint-order": "stroke" }, svg);
+          }
+        });
+        T(ox + 146, oy + 300, one ? "effectively 1 neuron" : same ? "4 identical neurons" : "4 different neurons", { "text-anchor": "middle", "font-size": 15.5, "font-weight": 700, fill: strong }, svg);
+        T(ox + 146, oy + 320, fr.when, { "text-anchor": "middle", "font-size": 13, fill: faint }, svg);
+      }
+      // side by side when there is room, one above the other on a narrow screen
+      function draw() {
+        var fr = FR[cur], stacked = svg.getBoundingClientRect().width < 520; clear(svg);
+        if (stacked) {
+          svg.setAttribute("viewBox", "0 0 320 676");
+          panel(10, 0, "Same start", eq[fr.snap], fr); panel(10, 344, "Random start", rnd[fr.snap], fr);
+          S("line", { x1: 12, x2: 308, y1: 337, y2: 337, stroke: css("--border") }, svg);
+        } else {
+          svg.setAttribute("viewBox", "0 0 640 332");
+          panel(16, 0, "Same start", eq[fr.snap], fr); panel(336, 0, "Random start", rnd[fr.snap], fr);
+          S("line", { x1: 320, x2: 320, y1: 12, y2: 322, stroke: css("--border") }, svg);
+        }
+      }
+      var wasStacked = null;
+      new ResizeObserver(function () { var st = svg.getBoundingClientRect().width < 520; if (st !== wasStacked) { wasStacked = st; draw(); } }).observe(box);
+      var CAP = [
+        "Before training. Same start: every neuron has exactly the same incoming weights (the same lines). Random start: each neuron is different.",
+        "Feed in one dot. Same start: all four neurons compute the same number. Random start: four different numbers.",
+        "Measure the slope for each neuron's weights. Same start: every neuron gets exactly the same slope.",
+        "Take one step. Same start: the same change for every neuron, so they are still identical.",
+        "After 300 steps. Same start: still identical. Random start: each neuron has gone its own way.",
+        "After 3000 steps. Same start: four copies of one neuron, however long you train. Random start: four different neurons, free to learn different things.",
+        "Four neurons that always do the same thing are really one neuron. The same-start network has wasted three of its four; the random one uses all four."
+      ];
+      var still = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      function toMerge() {
+        if (anim) { cancelAnimationFrame(anim); anim = 0; }
+        if (still) { merge = 1; draw(); return; }
+        var t0 = null; merge = 0;
+        (function step(ts) { if (t0 === null) { t0 = ts; } var u = Math.min(1, (ts - t0) / 1100); merge = u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2; draw(); if (u < 1) { anim = requestAnimationFrame(step); } else { anim = 0; } })(performance.now());
+      }
+      Stepper(box, { count: FR.length, delay: 1800, render: function (i) {
+        cur = i;
+        if (FR[i].show === "collapse") { toMerge(); } else { if (anim) { cancelAnimationFrame(anim); anim = 0; } merge = 0; draw(); }
+        return CAP[i];
+      } });
+      onTheme(draw);
+    })();
+
+    // ================= Rule 2: start them the right size =================
+    (function () {
+      var box = document.getElementById("fx-tel"); if (!box) { return; }
+      // each layer multiplies the signal's strength by the same number f, so after k layers it is f^k
+      var svg = document.getElementById("fx-tel-svg"), f = 0.5, cur = 0, L = 10, NN = 5;
+      function cx(k) { return 40 + k * 56; }
+      function cy(j) { return 76 + j * 30; }
+      function num(s) { if (s >= 10) { return String(Math.round(s)); } if (s >= 0.1) { return String(+s.toFixed(2)); } return String(+s.toPrecision(1)); }
+      function look(s) {   // colour, how solid, glow size, edge width for a given strength
+        var col = s >= 3 ? css("--c-red") : css("--c-blue");
+        return { col: col, fill: s < 1 ? Math.max(0.05, s) : 1, glow: s > 1 ? Math.min(36, 12 + 7 * Math.log2(s)) : 6 + 6 * s, glowA: s < 1 ? 0.25 * Math.max(0.05, s) : 0.25, edgeA: s < 1 ? 0.55 * Math.max(0.03, s) : Math.min(0.85, 0.45 + 0.08 * Math.log2(s)), edgeW: s > 1 ? 1.2 + Math.min(3, 0.5 * Math.log2(s)) : 1.2 };
+      }
+      function draw() {
+        clear(svg); var faint = css("--fg-faint"), line = css("--border"), j, i, k;
+        // the network: ten layers of neurons, every neuron linked to every neuron in the next layer
+        for (k = 1; k <= L; k++) { for (i = 0; i < NN; i++) { for (j = 0; j < NN; j++) { S("line", { x1: cx(k - 1), y1: cy(i), x2: cx(k), y2: cy(j), stroke: line, "stroke-width": 1 }, svg); } } }
+        // the signal: links and neurons light up layer by layer; the glow shows how strong it is
+        for (k = 1; k <= Math.min(cur, L); k++) {
+          var lk = look(Math.pow(f, k));
+          for (i = 0; i < NN; i++) { for (j = 0; j < NN; j++) { S("line", { x1: cx(k - 1), y1: cy(i), x2: cx(k), y2: cy(j), stroke: lk.col, "stroke-width": lk.edgeW, opacity: lk.edgeA }, svg); } }
+        }
+        for (k = 0; k <= Math.min(cur, L); k++) { var lg = look(Math.pow(f, k)); for (j = 0; j < NN; j++) { S("circle", { cx: cx(k), cy: cy(j), r: lg.glow, fill: lg.col, opacity: lg.glowA }, svg); } }
+        for (k = 0; k <= L; k++) {
+          var s = Math.pow(f, k), on = k <= cur, ln = look(s);
+          for (j = 0; j < NN; j++) {
+            S("circle", { cx: cx(k), cy: cy(j), r: 7, fill: css("--surface"), stroke: on ? "none" : line, "stroke-width": 1.4 }, svg);
+            if (on) { S("circle", { cx: cx(k), cy: cy(j), r: 7, fill: ln.col, opacity: ln.fill }, svg); }
+          }
+          T(cx(k), 40, k === 0 ? "input" : "layer " + k, { "text-anchor": "middle", "font-size": 12, fill: faint }, svg);
+          if (on) { T(cx(k), 236, "×" + num(s), { "text-anchor": "middle", "font-size": 14, "font-weight": 700, fill: css("--fg-strong") }, svg); }
+        }
+      }
+      var st = Stepper(box, { count: L + 1, delay: 800, render: function (i) {
+        cur = i; draw(); var s = num(Math.pow(f, i));
+        if (i === 0) { return "The signal enters at normal strength. Each layer multiplies it by " + f + "."; }
+        if (i === L) { return "<b>After ten layers:</b> ×" + s + ". " + (f < 1 ? "Almost nothing arrives." : f > 1 ? "Far too strong." : "It arrives at full strength."); }
+        return "<b>After layer " + i + ":</b> ×" + s + ". " + (f < 1 ? "Fading." : f > 1 ? "Getting louder." : "Holding steady.");
+      } });
+      chips(box, "spread", function (v) { f = +v; st.restart(); });
+      onTheme(draw);
+    })();
+
+    // ================= Memorizing, and the penalty dial (same ten dots) =================
+    (function () {
+      var r = mulberry32(4), g = gaussian(r), tr = [], te = [];
+      function truth(x) { return Math.sin(2.6 * x); }
+      for (var i = 0; i < 10; i++) { var x = -0.95 + 1.9 * (i + 0.2 + 0.6 * r()) / 10; tr.push([x, truth(x) + 0.28 * g()]); }
+      for (i = 0; i < 60; i++) { x = -1 + 2 * r(); te.push([x, truth(x) + 0.28 * g()]); }
+      var VERD = [["Too simple", "--c-orange"], ["Good fit", "--c-green"], ["Overfitting", "--c-red"]];
+      function solve(A, b) {
+        var nn = b.length, M = A.map(function (row, i) { return row.concat([b[i]]); });
+        for (var c = 0; c < nn; c++) { var p = c; for (var rr = c + 1; rr < nn; rr++) { if (Math.abs(M[rr][c]) > Math.abs(M[p][c])) { p = rr; } } var tmp = M[c]; M[c] = M[p]; M[p] = tmp; for (rr = c + 1; rr < nn; rr++) { var fct = M[rr][c] / M[c][c]; for (var k = c; k <= nn; k++) { M[rr][k] -= fct * M[c][k]; } } }
+        var out = new Array(nn); for (c = nn - 1; c >= 0; c--) { var s = M[c][nn]; for (k = c + 1; k < nn; k++) { s -= M[c][k] * out[k]; } out[c] = s / M[c][c]; } return out;
+      }
+      function fit(deg, lam) {
+        var d = deg + 1, A = [], y = [];
+        tr.forEach(function (p) { var row = []; for (var k = 0; k < d; k++) { row.push(Math.pow(p[0], k)); } A.push(row); y.push(p[1]); });
+        var AtA = [], Aty = [];
+        for (var a = 0; a < d; a++) { AtA.push([]); var s = 0; for (var i = 0; i < A.length; i++) { s += A[i][a] * y[i]; } Aty.push(s); for (var b = 0; b < d; b++) { var t = 0; for (i = 0; i < A.length; i++) { t += A[i][a] * A[i][b]; } AtA[a].push(t + (a === b && a > 0 ? lam * A.length : 0)); } }
+        return solve(AtA, Aty);
+      }
+      function evalp(c, x) { var s = 0; for (var k = c.length - 1; k >= 0; k--) { s = s * x + c[k]; } return s; }
+      function FitFig(id, STOPS) {
+        var box = document.getElementById(id); if (!box) { return; }
+        var FITS = STOPS.map(function (s) { return fit(s.deg, s.lam); }), cur = 0, svg = document.getElementById(id + "-svg");
+        var X = function (x) { return 40 + (x + 1.05) / 2.1 * 560; }, Y = function (y) { return 155 - y / 2.3 * 125; };
+        function draw() {
+          clear(svg); var faint = css("--fg-faint"), c = FITS[cur], vd = VERD[STOPS[cur].v];
+          var defs = S("defs", {}, svg), clip = S("clipPath", { id: id + "-clip" }, defs); S("rect", { x: 30, y: 10, width: 580, height: 282 }, clip);
+          S("line", { x1: 30, x2: 610, y1: Y(0), y2: Y(0), stroke: css("--border") }, svg);
+          te.forEach(function (p) { S("circle", { cx: X(p[0]), cy: Y(p[1]), r: 4.2, fill: "none", stroke: faint, "stroke-width": 1.4, opacity: 0.8 }, svg); });
+          var d = ""; for (var x = -1.05; x <= 1.0501; x += 0.004) { var yy = Math.max(-3, Math.min(3, evalp(c, x))); d += (d ? "L" : "M") + X(x).toFixed(1) + "," + Y(yy).toFixed(1); }
+          S("path", { d: d, fill: "none", stroke: css("--c-blue"), "stroke-width": 3, "clip-path": "url(#" + id + "-clip)" }, svg);
+          tr.forEach(function (p) { S("circle", { cx: X(p[0]), cy: Y(p[1]), r: 6.5, fill: css("--c-ink"), stroke: css("--surface"), "stroke-width": 1.5 }, svg); });
+          T(320, 40, vd[0], { "text-anchor": "middle", "font-size": 24, "font-weight": 700, fill: css(vd[1]) }, svg);
+          T(320, 62, STOPS[cur].what, { "text-anchor": "middle", "font-size": 15, fill: css("--fg-mid") }, svg);
+        }
+        Stepper(box, { count: STOPS.length, delay: 1800, render: function (i) { cur = i; draw(); return STOPS[i].cap; } });
+        onTheme(draw);
+      }
+      FitFig("fx-fit", [
+        { deg: 1, lam: 1e-9, v: 0, what: "straight line", cap: "A straight line is too simple and misses the pattern." },
+        { deg: 3, lam: 1e-9, v: 1, what: "gentle curve", cap: "A gentle curve fits the training dots and the new ones." },
+        { deg: 9, lam: 1e-9, v: 2, what: "very bendy curve", cap: "A very bendy curve passes through every training dot but swings wildly between them." }
+      ]);
+      FitFig("fx-pen", [
+        { deg: 9, lam: 1e-9, v: 2, what: "no penalty", cap: "No penalty: the same wiggly curve as above." },
+        { deg: 9, lam: 1e-4, v: 2, what: "small penalty", cap: "A small penalty calms it down, but not enough." },
+        { deg: 9, lam: 0.003, v: 1, what: "medium penalty", cap: "A medium penalty gives a smooth curve that also fits the new dots." },
+        { deg: 9, lam: 1, v: 0, what: "large penalty", cap: "A large penalty makes it too stiff to fit anything." }
+      ]);
+    })();
+
+    // ================= More data, for free =================
+    (function () {
+      var box = document.getElementById("fx-aug"); if (!box) { return; }
+      var svg = document.getElementById("fx-aug-svg"), cur = 0, TS = 150;
+      var TILES = [
+        { name: "original", keys: ["compose"] },
+        { name: "flip", keys: ["flip"], tf: "translate(150,0) scale(-1,1)" },
+        { name: "crop & zoom", keys: ["crop"], tf: "translate(-60,-40) scale(1.55)" },
+        { name: "rotate", keys: ["rot"], tf: "rotate(14 75 75) translate(-12,-12) scale(1.16)" },
+        { name: "colour", keys: ["color"], filter: true },
+        { name: "cutout", keys: ["erase"], erase: [78, 30, 46, 40] },
+        { name: "all at once", keys: ["flip", "crop", "rot", "color", "erase"], tf: "translate(150,0) scale(-1,1) rotate(-8 75 75) translate(-26,-26) scale(1.3)", filter: true, erase: [16, 88, 40, 34] }
+      ];
+      function cat(g) {
+        S("rect", { x: 0, y: 0, width: 150, height: 150, fill: css("--map-low") }, g);
+        S("circle", { cx: 26, cy: 26, r: 13, fill: "#f5c542" }, g);
+        S("rect", { x: 0, y: 118, width: 150, height: 32, fill: "#7cb66b" }, g);
+        S("path", { d: "M45,62 L40,24 L70,48 Z", fill: "#e8913a" }, g); S("path", { d: "M105,62 L112,24 L82,48 Z", fill: "#e8913a" }, g);
+        S("path", { d: "M47,56 L45,33 L62,47 Z", fill: "#f4b6b0" }, g); S("path", { d: "M103,56 L107,33 L90,47 Z", fill: "#f4b6b0" }, g);
+        S("ellipse", { cx: 75, cy: 82, rx: 42, ry: 38, fill: "#e8913a" }, g);
+        S("path", { d: "M52,60 q8,8 0,18 M98,60 q-8,8 0,18", stroke: "#c96f1f", "stroke-width": 3, fill: "none" }, g);
+        S("ellipse", { cx: 60, cy: 78, rx: 7, ry: 9, fill: "#fff" }, g); S("ellipse", { cx: 90, cy: 78, rx: 7, ry: 9, fill: "#fff" }, g);
+        S("ellipse", { cx: 61, cy: 80, rx: 3.5, ry: 6, fill: "#222" }, g); S("ellipse", { cx: 91, cy: 80, rx: 3.5, ry: 6, fill: "#222" }, g);
+        S("path", { d: "M70,92 L80,92 L75,98 Z", fill: "#d9687a" }, g);
+        S("path", { d: "M75,98 q-6,7 -12,3 M75,98 q6,7 12,3", stroke: "#8a4a1a", "stroke-width": 1.8, fill: "none" }, g);
+        S("path", { d: "M56,96 L30,90 M56,100 L30,103 M94,96 L120,90 M94,100 L120,103", stroke: "#5b3a1a", "stroke-width": 1.4 }, g);
+        S("path", { d: "M92,112 q10,6 22,-2", stroke: "#fff", "stroke-width": 5, "stroke-linecap": "round", fill: "none" }, g);
+      }
+      function draw() {
+        clear(svg); var defs = S("defs", {}, svg);
+        var flt = S("filter", { id: "fx-aug-col" }, defs); S("feColorMatrix", { type: "hueRotate", values: "35" }, flt);
+        var ft = S("feComponentTransfer", {}, flt); ["R", "G", "B"].forEach(function (c) { S("feFunc" + c, { type: "linear", slope: "1.25" }, ft); });
+        TILES.forEach(function (t, k) {
+          var col = k < 4 ? k : k - 4, row = k < 4 ? 0 : 1, ox = (row === 0 ? 0 : 64) + col * 128 + 6, oy = row * 140 + 6;
+          var g = S("g", { transform: "translate(" + ox + "," + oy + ") scale(0.8)" }, svg);
+          var cp = S("clipPath", { id: "fx-aug-c" + k }, defs); S("rect", { x: 0, y: 0, width: TS, height: TS, rx: 10 }, cp);
+          var clipG = S("g", { "clip-path": "url(#fx-aug-c" + k + ")", opacity: k <= cur ? 1 : 0.18 }, g);
+          var inner = S("g", t.tf ? { transform: t.tf } : {}, clipG); if (t.filter) { inner.setAttribute("filter", "url(#fx-aug-col)"); }
+          cat(inner);
+          if (t.erase) { S("rect", { x: t.erase[0], y: t.erase[1], width: t.erase[2], height: t.erase[3], fill: "#7d7d7d" }, clipG); }
+          S("rect", { x: 0, y: 0, width: TS, height: TS, rx: 10, fill: "none", stroke: k === cur ? css("--hl-bar") : css("--border"), "stroke-width": k === cur ? 5 : 2 }, g);
+          T(TS / 2, TS + 18, t.name, { "text-anchor": "middle", "font-size": 17, "font-weight": k === cur ? 700 : 400, fill: css("--fg-mid") }, g);
+        });
+      }
+      var code = document.getElementById("fx-aug-code");
+      var CAP = ["The original photo, labelled \"cat\".", "<b>Flip</b> it.", "<b>Crop</b> a part and zoom in.", "<b>Rotate</b> it a little.", "<b>Change the colours</b>, like different lighting.", "<b>Cover</b> a random patch.", "<b>All at once</b>, at random. A new version every time."];
+      Stepper(box, { count: TILES.length, delay: 1100, render: function (i) { cur = i; draw(); highlight(code, TILES[i].keys); return CAP[i]; } });
+      onTheme(draw);
+    })();
+
+    // ================= Dropout =================
+    (function () {
+      var box = document.getElementById("fx-drop"); if (!box) { return; }
+      var SIZES = [4, 6, 6, 2], p = 0.5, masks = [], cur = 0, svg = document.getElementById("fx-drop-svg");
+      function makeMasks() { var r = mulberry32(Math.round(p * 100) + 3); masks = []; for (var k = 0; k < 5; k++) { masks.push([[0, 1, 2, 3, 4, 5].map(function () { return r() >= p ? 1 : 0; }), [0, 1, 2, 3, 4, 5].map(function () { return r() >= p ? 1 : 0; })]); } }
+      function pos(l, i) { var n = SIZES[l]; return [60 + l * 145, 150 + (i - (n - 1) / 2) * 44]; }
+      function draw() {
+        clear(svg); var mask = (cur >= 1 && cur <= 5) ? masks[cur - 1] : null;
+        function on(l, i) { if (!mask || l === 0 || l === 3) { return true; } return mask[l - 1][i] === 1; }
+        for (var l = 0; l < 3; l++) { for (var i = 0; i < SIZES[l]; i++) { for (var j = 0; j < SIZES[l + 1]; j++) {
+          var a = pos(l, i), b = pos(l + 1, j), live = on(l, i) && on(l + 1, j);
+          S("line", { x1: a[0], y1: a[1], x2: b[0], y2: b[1], stroke: live ? css("--c-blue") : css("--border"), "stroke-width": live ? 1.4 : 0.8, opacity: live ? 0.55 : 0.6 }, svg);
+        } } }
+        for (l = 0; l < 4; l++) { for (i = 0; i < SIZES[l]; i++) {
+          var c = pos(l, i), alive = on(l, i);
+          S("circle", { cx: c[0], cy: c[1], r: 15, fill: alive ? css("--c-blue") : css("--surface-2"), stroke: alive ? css("--surface") : css("--border"), "stroke-width": 2 }, svg);
+          if (!alive) { S("path", { d: "M" + (c[0] - 7) + "," + (c[1] - 7) + " L" + (c[0] + 7) + "," + (c[1] + 7) + " M" + (c[0] + 7) + "," + (c[1] - 7) + " L" + (c[0] - 7) + "," + (c[1] + 7), stroke: css("--c-red"), "stroke-width": 2.8, "stroke-linecap": "round" }, svg); }
+        } }
+        ["input", "hidden", "hidden", "output"].forEach(function (t, k) { T(pos(k, 0)[0], 291, t, { "text-anchor": "middle", "font-size": 14, fill: css("--fg-faint") }, svg); });
+        T(12, 24, cur === 0 ? "the network" : cur <= 5 ? "training step " + cur : "test time: everyone plays", { "font-size": 16, "font-weight": 700, fill: css("--fg-strong") }, svg);
+      }
+      var code = document.getElementById("fx-drop-code");
+      makeMasks();
+      var st = Stepper(box, { count: 7, delay: 1100, render: function (i) {
+        cur = i; draw();
+        if (i === 0) { highlight(code, ["model"]); return "Two hidden layers of six neurons. Only hidden neurons ever sit out."; }
+        if (i === 6) { highlight(code, ["eval"]); return "<b>Test time.</b> <code>model.eval()</code>: everyone plays."; }
+        var off = 12 - masks[i - 1][0].reduce(function (s, v) { return s + v; }, 0) - masks[i - 1][1].reduce(function (s, v) { return s + v; }, 0);
+        highlight(code, ["train"]);
+        return "<b>Training step " + i + ".</b> " + off + " of 12 sit out. The rest do all the work.";
+      } });
+      chips(box, "p", function (v) { p = +v; document.querySelectorAll(".fx-p").forEach(function (e) { e.textContent = v; }); makeMasks(); st.restart(); });
+      onTheme(draw);
+    })();
+
+    // ================= Read your loss curves (static) =================
+    (function () {
+      var svg = document.getElementById("fx-doc-svg"); if (!svg) { return; }
+      var PANELS = [
+        { t: "Shoots up", fix: "Learning rate too high: lower it", tr: function (x) { return x < 0.25 ? 1 - x : 0.75 + Math.pow((x - 0.25) * 2.4, 2.2); } },
+        { t: "Barely moves", fix: "Learning rate too low: raise it", tr: function (x) { return 1 - 0.12 * x; } },
+        { t: "Orange turns up", fix: "Overfitting: regularize, or get more data", tr: function (x) { return 0.95 * Math.exp(-3.2 * x) + 0.05; }, va: function (x) { return 0.95 * Math.exp(-3.2 * x) + 0.2 + 0.55 * Math.max(0, x - 0.4) * Math.max(0, x - 0.4) * 3; } },
+        { t: "Both stay high", fix: "Too simple: bigger model, or train longer", tr: function (x) { return 0.55 + 0.45 * Math.exp(-5 * x); }, va: function (x) { return 0.6 + 0.42 * Math.exp(-5 * x); } }
+      ];
+      function draw() {
+        clear(svg); var faint = css("--fg-faint");
+        PANELS.forEach(function (pn, k) {
+          var ox = 20 + (k % 2) * 315, oy = 12 + Math.floor(k / 2) * 185, w = 280, h = 110;
+          T(ox, oy + 16, pn.t, { "font-size": 17, "font-weight": 700, fill: css("--fg-strong") }, svg);
+          S("line", { x1: ox, x2: ox + w, y1: oy + 30 + h, y2: oy + 30 + h, stroke: css("--border") }, svg);
+          S("line", { x1: ox, x2: ox, y1: oy + 28, y2: oy + 30 + h, stroke: css("--border") }, svg);
+          function curve(f, col) { var d = ""; for (var x = 0; x <= 1.0001; x += 0.02) { var v = f(x); if (v > 1.25) { d += "L" + (ox + x * w).toFixed(1) + "," + (oy + 30).toFixed(1); break; } d += (d ? "L" : "M") + (ox + x * w).toFixed(1) + "," + (oy + 30 + h - v / 1.25 * h).toFixed(1); } S("path", { d: d, fill: "none", stroke: col, "stroke-width": 2.8 }, svg); }
+          curve(pn.tr, css("--c-blue")); if (pn.va) { curve(pn.va, css("--c-orange")); }
+          T(ox + w, oy + 30 + h + 15, "time →", { "text-anchor": "end", "font-size": 12, fill: faint }, svg);
+          T(ox, oy + 30 + h + 36, pn.fix, { "font-size": 15, fill: css("--fg-mid") }, svg);
+        });
+      }
+      draw(); onTheme(draw);
+    })();
+  };
+  </script>
+  <script>
+    (function () {
+      var b = document.getElementById("themetoggle"); if (!b) { return; }
+      b.addEventListener("click", function () {
+        var dark = document.documentElement.getAttribute("data-theme") === "dark";
+        if (dark) { document.documentElement.removeAttribute("data-theme"); } else { document.documentElement.setAttribute("data-theme", "dark"); }
+        try { localStorage.setItem("hnnl-theme", dark ? "light" : "dark"); } catch (e) {}
+        window.dispatchEvent(new Event("themechange"));
+      });
+    })();
+  </script>
+</body>
+</html>
