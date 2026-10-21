@@ -8,4 +8,4 @@ L5
 
 L6
 : **Sequential Models**: ResNets, recurrent neural networks, long short-term memory networks.
-  : Slides TBA
+  : [Reference](https://cs231n.stanford.edu/slides/2026/lecture_7.pdf){:target="_blank" rel="noopener noreferrer"}
