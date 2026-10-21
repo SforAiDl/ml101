@@ -10,7 +10,7 @@ seo:
 
 # ML 101: Introduction to Machine Learning
 
-ML 101 is a student-run introduction to machine learning, organised by the [Society for Artificial Intelligence and Deep Learning](https://www.saidl.in){:target="_blank" rel="noopener noreferrer"} in collaboration with the [Center for Technical Education](https://bpgc-cte.org/){:target="_blank" rel="noopener noreferrer"} (CTE). It runs in the First Semester of 2026-27, and every lecture is designed and delivered by current members of SAiDL.
+ML 101 is a student-run introduction to machine learning, organised by the [Society for Artificial Intelligence and Deep Learning](https://www.saidl.in){:target="_blank" rel="noopener noreferrer"} in collaboration with the [Center for Technical Education](https://bpgc-cte.org/){:target="_blank" rel="noopener noreferrer"} (CTE). It runs in the First Semester of 2026-27, and every lecture is delivered by current members of SAiDL.
 
 The course starts from regression and the fundamentals of how models learn, then moves into deep learning: neural networks, computer vision, attention, transformers, generative AI, and reinforcement learning. By the end you understand not just how modern AI systems are used, but how they are built and why they work.
 
