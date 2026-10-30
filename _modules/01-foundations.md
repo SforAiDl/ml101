@@ -12,7 +12,7 @@ L2
 
 SL1
 : **Python and Numpy Tutorial**: An interactive, step-by-step introduction to Python and NumPy.
-  : [Open Tutorial](https://sforaidl.github.io/ml101/sl1/){:target="_blank" rel="noopener noreferrer"}
+  : [Tutorial](https://sforaidl.github.io/ml101/sl1/){:target="_blank" rel="noopener noreferrer"}
 
 L3
 : **Building a Neural Network**: Neural networks, backpropagation, activation functions.
