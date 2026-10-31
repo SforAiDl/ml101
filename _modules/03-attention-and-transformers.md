@@ -8,4 +8,4 @@ L7
 
 L8
 : **Transformer Architecture**: Multi-head attention, positional encoding, the Transformer.
-  : Slides TBA
+  : [Slides]({{ site.baseurl }}/resources/lec8/transformer_architecture.html){:target="_blank" rel="noopener noreferrer"}
