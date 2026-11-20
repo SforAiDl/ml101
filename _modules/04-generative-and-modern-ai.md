@@ -8,7 +8,7 @@ L9
 
 L10
 : **Generative Models**: Generative modeling, GPTs, variational autoencoders, Vision Transformers.
-  : Slides TBA
+  : [Reference]({{ site.baseurl }}/resources/lec10/generative_models_part_1.pdf){:target="_blank" rel="noopener noreferrer"}
 
 L11
 : **Modern AI Systems**: RLHF, prompt engineering, ReAct, chain-of-thought reasoning.
