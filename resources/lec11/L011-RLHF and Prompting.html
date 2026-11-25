@@ -1,0 +1,1595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Modern AI Systems: Prompting and RLHF</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="ML 101, Lecture 11: how a text-completer becomes an assistant. Part A: prompting. Part B: post-training (RLHF).">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+<script>(function(){try{var t=localStorage.getItem("l11-theme");if(t==="dark")document.documentElement.setAttribute("data-theme","dark");}catch(e){}})();</script>
+<style>
+/* ---- tokens and page: copied from L08 (no web fonts; KaTeX from L08's CDN) ---- */
+:root{
+  --bg:#fff;--surface:#fff;--surface-2:#fbfbfa;
+  --fg:#333;--fg-strong:#111;--fg-mid:#555;--fg-muted:#666;--fg-faint:#767676;
+  --border:#e6e6e6;--border-soft:#ecece8;
+  --link:#1772d0;--link-hover:#f09228;
+  --code-bg:#f2f2f2;--hl-bg:#fff1bf;--hl-bar:#f0b400;
+  --hl-rad:4px;--hl-pad:1px 4px;
+  --c-blue:#1772d0;--c-orange:#e08a00;--c-red:#e5322d;--c-gray:#8a8a8a;
+  --c-green:#23964a;--c-purple:#7b52c7;--c-ink:#333;--c-teal:#10918f;
+  --box-emb:#f6dede;--box-attn:#fbe5c4;--box-ffn:#cde8f6;--box-norm:#f1f3c8;--box-lin:#dcdcf0;--box-soft:#d3e8d6;--box-bg:#f2f2f0;
+  --nav-h:50px;color-scheme:light;
+  /* Part B colour code: score / reward, KL penalty / reference model, critic */
+  --k-score:#b45f00;--k-leash:#0b7a78;--k-critic:#7b52c7;
+}
+[data-theme="dark"]{
+  --bg:#15171b;--surface:#1c1f24;--surface-2:#202329;
+  --fg:#d7dae0;--fg-strong:#f4f6f9;--fg-mid:#b6bac2;--fg-muted:#9ba0a9;--fg-faint:#8a8f98;
+  --border:#2f333a;--border-soft:#272b31;
+  --link:#6cb0f5;--link-hover:#ffb45e;
+  --code-bg:#262a31;--hl-bg:#3b3417;--hl-bar:#f0b400;
+  --c-blue:#6cb0f5;--c-orange:#ffb45e;--c-red:#ff6b66;--c-gray:#9ba0a9;
+  --c-green:#5cc97d;--c-purple:#b69cf5;--c-ink:#d7dae0;--c-teal:#4fd1cf;
+  --box-emb:#5a3a3d;--box-attn:#5c4524;--box-ffn:#24495c;--box-norm:#4d5128;--box-lin:#3a3a5c;--box-soft:#2d4d35;--box-bg:#252830;
+  --k-score:#ffb45e;--k-leash:#4fd1cf;--k-critic:#b69cf5;
+  color-scheme:dark;
+}
+html{background:var(--bg);scroll-behavior:smooth;scroll-padding-top:calc(var(--nav-h) + 16px)}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{margin:0;background:var(--bg);color:var(--fg);overflow-x:clip;padding-top:var(--nav-h)}
+body,td,th,p,a,li,strong,button,input,select{font-family:'Lato',Verdana,Helvetica,sans-serif;font-size:20px}
+a{color:var(--link);text-decoration:none}a:hover{color:var(--link-hover)}
+:focus-visible{outline:2px solid var(--link);outline-offset:2px;border-radius:3px}
+
+/* nav */
+.topnav{position:fixed;top:0;left:0;right:0;height:var(--nav-h);z-index:20;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;padding:0 14px}
+.topnav .brand{font-weight:700;font-size:15px;color:var(--fg-strong);margin-right:10px;white-space:nowrap}
+.topnav .links{display:flex;gap:2px;flex:1;overflow-x:auto;scrollbar-width:none}
+.topnav .links::-webkit-scrollbar{display:none}
+.topnav .links a{font-size:15px;padding:6px 11px;border-radius:16px;color:var(--fg-mid);white-space:nowrap}
+.topnav .links a:hover{color:var(--link-hover)}
+.topnav .links a.on{background:var(--hl-bg);color:var(--fg-strong);font-weight:700}
+.themetoggle{flex:none;width:34px;height:34px;border-radius:50%;border:1px solid var(--border);background:var(--surface);color:var(--fg-mid);cursor:pointer;display:grid;place-items:center;padding:0}
+.themetoggle svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round}
+.themetoggle .icon-sun{display:none}[data-theme="dark"] .themetoggle .icon-sun{display:block}[data-theme="dark"] .themetoggle .icon-moon{display:none}
+@media (max-width:760px){.topnav .brand{display:none}}
+
+/* page */
+.paper-page{max-width:760px;width:100%;box-sizing:border-box;margin:0 auto;padding:30px 20px 140px}
+.paper-title{font-size:clamp(32px,5vw,44px);font-weight:700;line-height:1.15;letter-spacing:-.01em;text-align:center;margin:56px 0 14px;color:var(--fg-strong)}
+.paper-sub{text-align:center;color:var(--fg-mid);margin:0 0 8px}
+.paper-summary{max-width:600px;margin:14px auto 26px;text-align:center;line-height:1.55;color:var(--fg-muted);font-size:18px}
+h2{font-size:clamp(30px,4.6vw,40px);line-height:1.15;letter-spacing:-.01em;margin:140px 0 18px;color:var(--fg-strong)}
+h2::before{content:"";display:block;width:56px;height:3px;border-radius:2px;background:var(--link);margin:0 0 22px}
+h2 .eyebrow{display:block;font-size:14px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--link);margin:0 0 8px}
+h3{font-size:clamp(23px,3.2vw,27px);line-height:1.25;margin:80px 0 14px;color:var(--fg-strong)}
+h2+h3{margin-top:28px}
+h2,h3{scroll-margin-top:calc(var(--nav-h) + 16px)}
+p,li{font-size:21px;line-height:1.6}p{margin:0 0 18px}
+ul,ol{padding-left:28px;margin:10px 0 18px}li{margin:7px 0}
+li>ul{margin:6px 0}
+code{font-family:Menlo,Consolas,monospace;font-size:.82em;background:var(--code-bg);padding:1px 5px;border-radius:4px}
+.note{border-left:3px solid var(--hl-bar);background:var(--surface-2);padding:10px 16px;border-radius:0 10px 10px 0;margin:22px 0}
+.note p,.note li{font-size:18px;margin:4px 0}
+.note b.t{display:block;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--c-orange);margin-bottom:2px}
+.pill{display:inline-block;font-size:13px;border:1px solid var(--border);border-radius:12px;padding:1px 9px;color:var(--fg-muted);vertical-align:middle;margin-left:6px;font-weight:400}
+details.recall{border:1px solid var(--border);border-radius:12px;background:var(--surface-2);padding:4px 18px;margin:10px 0 0}
+details.recall summary{cursor:pointer;font-weight:700;color:var(--fg-mid);padding:10px 0;font-size:18px}
+details.recall li,details.recall p{font-size:18px}
+
+/* figures (L08) */
+.tp{display:flex;flex-direction:column;margin:30px 0 6px;outline:none}
+@media (min-width:1000px){.wide900{width:900px;margin-left:calc(50% - 450px)}}
+@media (min-width:1140px){.wide{width:1080px;margin-left:calc(50% - 540px)}}
+.tp svg,.tp canvas.fx{display:block;width:100%;height:auto;background:var(--surface-2);border:1px solid var(--border);border-radius:12px;font-family:'Lato',Verdana,Helvetica,sans-serif}
+.tp svg text{font-family:'Lato',Verdana,Helvetica,sans-serif;fill:var(--fg)}
+.tp-ctl{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:10px 0 0}
+.tp-ctl button,.chip{padding:6px 14px;border:1px solid var(--border);border-radius:18px;background:var(--surface);color:var(--fg-mid);font-size:15px;cursor:pointer;transition:border-color .15s,color .15s}
+.tp-ctl button[data-act="play"]{border-color:var(--link);color:var(--link);font-weight:700;min-width:64px}
+.tp-ctl button:hover,.chip:hover{border-color:var(--link-hover);color:var(--link-hover)}
+.tp-ctl button:disabled{opacity:.4;cursor:default}
+.tp-count{margin-left:auto;font-size:14px;color:var(--fg-faint);font-variant-numeric:tabular-nums}
+.tp-cap{min-height:56px;margin:14px 2px 0;padding:1px 0 1px 14px;border-left:3px solid var(--hl-bar);font-size:18px;line-height:1.5;color:var(--fg)}
+.tp-cap b{color:var(--fg-strong)}
+.figcap{font-size:15.5px;color:var(--fg-muted);margin:10px 2px 38px 17px;line-height:1.5}
+@media (min-width:1140px){.tp.wide+p.figcap{width:1063px;margin-left:calc(50% - 523px)}}
+.chips{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 12px;font-size:16px;color:var(--fg-muted)}
+.chip[aria-pressed="true"]{border-color:var(--link);color:var(--link);font-weight:700}
+.tp-grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:16px 22px;align-items:start}
+@media (max-width:900px){.tp-grid{grid-template-columns:minmax(0,1fr)}}
+[data-show],[data-hide],[data-grp],[data-dim]{transition:opacity .5s ease}
+.gone{opacity:0!important;pointer-events:none}
+.dim{opacity:.2}
+@media (prefers-reduced-motion:reduce){[data-show],[data-hide],[data-grp]{transition:none}}
+.tbl{border-collapse:collapse;width:100%;margin:18px 0 26px}
+.tbl th,.tbl td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);font-size:17px;line-height:1.4;vertical-align:top}
+.tbl th{border-bottom:2px solid var(--border);font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--fg-faint)}
+.tblwrap{overflow-x:auto}
+.refs li,.refs a{font-size:17px}
+a.ref{font-size:.7em;font-weight:700;vertical-align:super;line-height:0;margin-left:1px;white-space:nowrap}
+
+/* code panel: the running line lights up (L04) */
+.codebox{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:12px 12px 14px;overflow-x:auto}
+.codebox-title{font-weight:700;font-size:16px;border-bottom:1px solid var(--border);padding:0 4px 9px;margin-bottom:8px;color:var(--fg-strong)}
+.codebox .cl{position:relative;font-family:Menlo,Consolas,monospace;font-size:14.5px;line-height:1.9;white-space:pre;border-radius:4px;padding:0 8px 0 18px;color:var(--fg);transition:background-color .25s,box-shadow .25s,opacity .25s}
+.codebox .cl .cm{color:var(--fg-faint)}
+.codebox .cl.on{background:var(--hl-bg);box-shadow:inset 4px 0 0 var(--hl-bar);color:var(--fg-strong)}
+.codebox .cl.off{opacity:.35}
+.codebox .cl.add::before{content:"+";position:absolute;left:4px;color:var(--c-green);font-weight:700}
+.codebox-note{font-size:13px;color:var(--fg-muted);margin-top:10px}
+/* prompts are read from the back of the room: bigger lines */
+.codebox.prompt .cl{font-size:17px}
+
+/* L11: prompt / completion panels (hook) */
+.io .txt{font-size:19px;line-height:1.55;margin:6px 8px;color:var(--fg-strong)}
+.io .txt+.txt{margin-top:12px}
+.io .txt.wait{color:var(--fg-faint);font-style:italic}
+.io .codebox-title{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px}
+.io .codebox-title .pill{font-size:13px;margin-left:0}
+.hook-outs{display:grid;gap:14px;margin-top:14px}
+.hook-outs.two{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+@media (max-width:700px){.hook-outs.two{grid-template-columns:minmax(0,1fr)}}
+
+/* L11: training stages (A1) */
+.stages{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:26px;padding:16px 0 0}
+@media (max-width:900px){.stages{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.stage{position:relative;border:1px solid var(--border);border-radius:12px;background:var(--surface);transition:opacity .5s ease,box-shadow .3s,border-color .3s}
+.stage.on{border-color:var(--hl-bar);box-shadow:0 0 0 2px var(--hl-bar)}
+.stage h4{margin:0;padding:10px 14px 9px;font-size:19px;line-height:1.25;color:var(--fg-strong);border-radius:11px 11px 0 0}
+.stage h4 small{display:block;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg-mid);font-weight:700;margin-bottom:2px}
+.stage dl{margin:0;padding:4px 14px 14px}
+.stage dt{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--fg-muted);font-weight:700;margin-top:10px}
+.stage dd{margin:2px 0 0;font-size:16px;line-height:1.4;color:var(--fg)}
+.stage:not(:last-child)::after{content:"";position:absolute;right:-22px;top:26px;border:9px solid transparent;border-left:13px solid var(--fg-faint);border-right:0}
+@media (max-width:900px){.stage::after{display:none}}
+.badge{position:absolute;top:-12px;right:10px;background:var(--hl-bar);color:#111;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;border-radius:10px}
+.usebar{position:relative;margin-top:26px;border:2px dashed var(--link);border-radius:12px;padding:12px 16px;display:flex;gap:16px;align-items:center;background:var(--surface);transition:opacity .5s ease,box-shadow .3s}
+.usebar.on{box-shadow:0 0 0 2px var(--hl-bar);border-color:var(--hl-bar)}
+.usebar b.k{flex:none;font-size:19px;color:var(--fg-strong)}
+.usebar span{font-size:16px;line-height:1.4;color:var(--fg)}
+/* inactive cards stay readable on a projector */
+.stages .stage.dim,.usebar.dim{opacity:.4}
+@media (prefers-reduced-motion:reduce){.stage,.usebar{transition:none}}
+
+/* L11: prompt lines with a label on the right (A3) */
+.codebox .cl.lab{display:flex;justify-content:space-between;align-items:baseline;gap:18px}
+.codebox .cl .lb{font-family:'Lato',Verdana,Helvetica,sans-serif;font-size:14px;font-style:italic;color:var(--fg-muted);white-space:nowrap}
+.codebox .cl.empty .cm{font-family:'Lato',Verdana,Helvetica,sans-serif;font-style:italic}
+.codebox-note .plus{color:var(--c-green)}
+
+/* L11: chain-of-thought (A4) */
+.cot-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px}
+@media (max-width:760px){.cot-cols{grid-template-columns:minmax(0,1fr)}}
+.cot-cols h4{margin:0 0 8px 2px;font-size:19px;color:var(--fg-strong)}
+.cot-cols .codebox+.codebox{margin-top:12px}
+.io .txt.q{color:var(--fg)}
+.reason{border-radius:var(--hl-rad);padding:var(--hl-pad);-webkit-box-decoration-break:clone;box-decoration-break:clone}
+.reason.ex{background:color-mix(in srgb,var(--c-blue) 22%,transparent)}
+.reason.out{background:color-mix(in srgb,var(--c-green) 24%,transparent)}
+.verdict{display:inline-block;margin-left:6px;font-weight:700;font-size:17px}
+.verdict.bad{color:var(--c-red)}.verdict.good{color:var(--c-green)}
+.trigger{background:var(--hl-bg);box-shadow:inset 0 -2px 0 var(--hl-bar);font-weight:700;padding:var(--hl-pad);border-radius:var(--hl-rad);-webkit-box-decoration-break:clone;box-decoration-break:clone}
+
+/* L11: ReAct (A5) */
+.tp-grid.react{grid-template-columns:minmax(0,.8fr) minmax(0,1.25fr)}
+@media (max-width:900px){.tp-grid.react{grid-template-columns:minmax(0,1fr)}}
+.codebox.trace .cl{white-space:pre-wrap;font-size:15px;line-height:1.55;padding-top:3px;padding-bottom:3px;margin-bottom:2px}
+.codebox.trace .cl.qline{font-family:'Lato',Verdana,Helvetica,sans-serif;font-size:17px}
+.codebox.trace .k{font-weight:700}
+.k.t{color:var(--c-purple)}.k.a{color:var(--c-blue)}.k.o{color:var(--c-teal)}
+.madeup{background:color-mix(in srgb,var(--c-red) 26%,transparent);border-radius:var(--hl-rad);padding:var(--hl-pad);-webkit-box-decoration-break:clone;box-decoration-break:clone}
+.grounded{background:color-mix(in srgb,var(--c-green) 24%,transparent);border-radius:var(--hl-rad);padding:var(--hl-pad);-webkit-box-decoration-break:clone;box-decoration-break:clone}
+.loop .node rect{fill:var(--surface);stroke:var(--border);stroke-width:2;transition:fill .3s,stroke .3s}
+.loop .node.on rect{fill:var(--hl-bg);stroke:var(--hl-bar);stroke-width:3}
+.loop .node.off{opacity:.25}
+.fine{font-size:14.5px;color:var(--fg-muted);margin:-30px 2px 38px 17px;line-height:1.5}
+.note.todo{border-left-color:var(--c-red)}.note.todo b.t{color:var(--c-red)}
+
+/* ===== Part B ===== */
+/* equations: L08's display style, plus a symbol legend and a source note */
+.katex-display{overflow-x:auto;overflow-y:hidden;padding:10px 0;margin:22px 0;font-size:1.25em}
+.k-score{color:var(--k-score)}.k-leash{color:var(--k-leash)}.k-critic{color:var(--k-critic)}
+div.eqw .katex-display{margin:10px 0}
+dl.sym{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:9px 20px;align-items:baseline;margin:0 0 12px;padding:14px 20px;border:1px solid var(--border);border-radius:12px;background:var(--surface-2)}
+dl.sym dt{margin:0;font-size:20px;text-align:right;white-space:nowrap}
+dl.sym dd{margin:0;font-size:18px;line-height:1.5;color:var(--fg)}
+p.eqsrc{font-size:15.5px;color:var(--fg-muted);margin:0 2px 34px 4px;line-height:1.5}
+/* "you are here" strip: the A1 stages, small */
+.yah{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:22px;margin:26px 0 30px}
+.yah .st{position:relative;border:1px solid var(--border);border-top-width:7px;border-radius:10px;padding:8px 12px 9px;background:var(--surface);font-size:16px;line-height:1.3;color:var(--fg-muted)}
+.yah .st small{display:block;font-size:14px;letter-spacing:.06em;text-transform:uppercase;font-weight:700;color:var(--fg-faint);margin-bottom:2px}
+.yah .st.done{color:var(--fg-mid)}
+.yah .st.here{color:var(--fg-strong);font-weight:700;box-shadow:0 0 0 2px var(--hl-bar);border-color:var(--hl-bar)}
+.yah .st.here::before{content:"You are here";position:absolute;top:-14px;right:8px;background:var(--hl-bar);color:#111;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:2px 8px;border-radius:9px}
+.yah .st:not(:last-child)::after{content:"";position:absolute;right:-19px;top:40%;border:7px solid transparent;border-left:10px solid var(--fg-faint);border-right:0}
+@media (max-width:700px){.yah{grid-template-columns:repeat(2,minmax(0,1fr))}.yah .st::after{display:none}}
+/* write vs judge (B1) */
+.wj{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px}
+@media (max-width:760px){.wj{grid-template-columns:minmax(0,1fr)}}
+.wj h4{margin:0 0 8px 2px;font-size:19px;color:var(--fg-strong)}
+.wj .codebox{transition:box-shadow .3s,border-color .3s}
+.wj .codebox.on{border-color:var(--hl-bar);box-shadow:0 0 0 2px var(--hl-bar)}
+.wj .txt.small{font-size:16.5px;line-height:1.45;color:var(--fg)}
+.wj .ab{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;margin:8px 4px 0}
+.wj .ab>div{border:1px solid var(--border);border-radius:10px;padding:6px 10px;background:var(--surface);font-size:15.5px;line-height:1.4;color:var(--fg)}
+.wj .ab>div.win{border-color:var(--c-green);box-shadow:0 0 0 1px var(--c-green)}
+.wj .ab b{display:block;font-size:14px;color:var(--fg-muted)}
+.wj .cost{margin:10px 8px 2px;font-size:17px;color:var(--fg-mid)}
+.wj .cost b{color:var(--fg-strong)}
+/* labeler (B2) */
+.tp-grid.lab{grid-template-columns:minmax(0,1.2fr) minmax(0,1fr)}
+@media (max-width:900px){.tp-grid.lab{grid-template-columns:minmax(0,1fr)}}
+.lab-ans{display:grid;gap:10px;margin-top:10px}
+.lab-ans .codebox{transition:box-shadow .3s,border-color .3s}
+.lab-ans .codebox.win{border-color:var(--c-green);box-shadow:0 0 0 2px var(--c-green)}
+.lab-ans .codebox.lose{opacity:.75}
+.lab-ans .txt{font-size:17px;line-height:1.5}
+.lab .codebox-title .pill.who{border-color:var(--fg-faint);color:var(--fg-mid)}
+/* the RL loop (B3) */
+.bloop .node rect{fill:var(--surface);stroke:var(--fg-faint);stroke-width:2;transition:fill .3s,stroke .3s}
+.bloop .node.score rect{stroke:var(--k-score);stroke-width:2.5}
+.bloop .node.leash rect{stroke:var(--k-leash);stroke-width:2.5}
+.bloop .node.on rect{fill:var(--hl-bg)}
+.bloop .dim{opacity:.28}
+/* method diagrams (Part B summary): extra node kinds and TRAINED / FROZEN / RULE tags */
+.bloop .node.model rect{stroke:var(--fg-strong);stroke-width:2.5}
+.bloop .node.critic rect{stroke:var(--k-critic);stroke-width:2.5}
+.bloop .node.rule rect{stroke:var(--k-score);stroke-width:2.5;stroke-dasharray:8 6}
+.bloop .node.old rect{stroke-dasharray:6 5}
+.bloop g.tag.tag-t rect{fill:var(--fg-strong);stroke:var(--fg-strong);stroke-width:1.5}
+.bloop g.tag.tag-t text{fill:var(--bg)}
+.bloop g.tag.tag-f rect,.bloop g.tag.tag-r rect{fill:var(--surface);stroke:var(--fg-mid);stroke-width:1.5}
+.bloop g.tag.tag-r rect{stroke-dasharray:4 3}
+.bloop g.tag.tag-f text,.bloop g.tag.tag-r text{fill:var(--fg-mid)}
+.readout{display:flex;flex-wrap:wrap;gap:8px 26px;margin:10px 4px 0;font-size:17px;color:var(--fg-mid)}
+.readout b{color:var(--fg-strong);font-variant-numeric:tabular-nums}
+.readout b.k-score{color:var(--k-score)}.readout b.k-leash{color:var(--k-leash)}
+/* highlights (B5, B6) */
+/* equation highlight: one box style for every height; margin keeps it clear of neighbouring symbols and parentheses */
+.k-swap{display:inline-block;background:var(--hl-bg);border-radius:var(--hl-rad);padding:4px;margin:0 3px;line-height:1.2}
+/* pipeline comparison (B5) */
+.pipe .box rect{fill:var(--surface);stroke:var(--fg-faint);stroke-width:2;transition:fill .3s,stroke .3s,opacity .3s}
+.pipe .box.score rect{stroke:var(--k-score);stroke-width:2.5}
+.pipe .box.off rect{fill:none;stroke:var(--fg-faint);stroke-dasharray:7 6}
+.pipe .box.off text{fill:var(--fg-faint)}
+.pipe .box.on rect{fill:var(--hl-bg);stroke:var(--hl-bar);stroke-width:3}
+/* limitation cards (B7) */
+.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:22px 0 30px}
+@media (max-width:760px){.cards{grid-template-columns:minmax(0,1fr)}}
+.card{border:1px solid var(--border);border-top:4px solid var(--hl-bar);border-radius:12px;background:var(--surface-2);padding:12px 16px 14px}
+.card h4{margin:0 0 6px;font-size:20px;color:var(--fg-strong)}
+.card p{font-size:18px;line-height:1.5;margin:0 0 8px}
+.card p:last-child{margin-bottom:0}
+</style>
+</head>
+<body>
+<nav class="topnav" aria-label="Sections">
+  <span class="brand">Modern AI Systems</span>
+  <div class="links" id="navlinks">
+    <a href="#recall">Recall</a>
+    <a href="#hook">Motivation</a>
+    <a href="#phases">Training phases</a>
+    <a href="#zeroshot">Zero-shot</a>
+    <a href="#fewshot">Few-shot</a>
+    <a href="#cot">Chain-of-thought</a>
+    <a href="#react">ReAct</a>
+    <a href="#recap">Recap</a>
+    <a href="#partb">Why RLHF</a>
+    <a href="#b2">Reward model</a>
+    <a href="#b3">KL penalty</a>
+    <a href="#b4">PPO</a>
+    <a href="#b5">DPO</a>
+    <a href="#b6">GRPO</a>
+    <a href="#b7">Limitations</a>
+    <a href="#family">Side by side</a>
+    <a href="#wrap">Wrap-up</a>
+  </div>
+  <button type="button" class="themetoggle" id="themetoggle" title="Light / dark" aria-label="Switch between light and dark"><svg class="icon-moon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="icon-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.2 5.2l1.4 1.4M17.4 17.4l1.4 1.4M18.8 5.2l-1.4 1.4M6.6 17.4l-1.4 1.4"/></svg></button>
+</nav>
+
+<div class="paper-page">
+<h1 class="paper-title">Modern AI Systems: Prompting and RLHF</h1>
+<p class="paper-sub">Nidheesh Kannadasan</p>
+<p class="paper-summary">How do we turn a text-completer into an assistant? Part A changes the <b>input</b> (prompting). Part B changes the <b>weights</b> (post-training). Every figure can be played, or stepped through with Next or the arrow keys.</p>
+
+<h3 id="recall" style="margin-top:20px">Recall</h3>
+<details class="recall">
+  <summary>Three things from earlier lectures</summary>
+  <ul>
+    <li><b>Weights are knobs (L4):</b> training turns millions of knobs, one gradient step at a time, to make the loss smaller.</li>
+    <li><b>Pretraining is fill in the blank (L9):</b> hide part of some text and learn to predict it. No labels needed, so it can use huge amounts of text.</li>
+    <li><b>GPT (L10):</b> a decoder-only transformer that predicts the next token, appends it, and repeats.</li>
+  </ul>
+</details>
+
+<!-- ================= HOOK ================= -->
+<h2 id="hook"><span class="eyebrow">Motivation</span>Same model, different behaviour</h2>
+<p>Here is one prompt, given to two models<a class="ref" href="#ref-1">[1]</a>. Pick a model, then step through.</p>
+<div id="fx-hook"></div>
+<p class="figcap">Source: OpenAI (2022)</p>
+
+<p>Both models are GPT-3 underneath. They have the same architecture; the only difference is that InstructGPT was fine-tuned on data collected from people<a class="ref" href="#ref-2">[2]</a>.</p>
+<p>So how do we turn a text-completer into an assistant? There are two levers:</p>
+<ol>
+  <li><b>Change the input</b>: write a better prompt. No weights change. <b>Part A</b>, now.</li>
+  <li><b>Change the weights</b>: train the model some more after pretraining. <b>Part B</b>.</li>
+</ol>
+
+<!-- ================= PART 1 ================= -->
+<h2 id="phases"><span class="eyebrow">A1</span>How an LLM is trained, in stages</h2>
+<p>Before we use a model, it helps to know where it came from. A chat model is built in stages, and each stage turns the knobs again with a different kind of data.</p>
+<div class="wide" id="fx-phases"></div>
+<p class="figcap">Sources: Brown et al. (2020); Ouyang et al. (2022); Karpathy (2023); DeepSeek-AI (2025)</p>
+
+<div class="note"><b class="t">Keep in mind</b>
+  <p>Every stage changes the weights. Prompting changes nothing in the model: you only change what you type.</p>
+</div>
+
+<!-- ================= PART 2 ================= -->
+<h2 id="zeroshot"><span class="eyebrow">A2</span>Zero-shot: just ask</h2>
+<p><b>Zero-shot</b> prompting means describing the task in plain words, with no examples. The model reads the task, then continues the text after <code>=&gt;</code>:</p>
+<div class="codebox prompt" style="margin:24px 0 6px">
+<div class="codebox-title">Zero-shot prompt</div>
+<div class="cl">Translate English to French:   <span class="cm">← task description</span></div>
+<div class="cl">cheese =&gt;                      <span class="cm">← prompt</span></div>
+</div>
+<p class="figcap">Source: Brown et al. (2020), Figure 2.1</p>
+
+<p>For base GPT-3, zero-shot is the hardest setting: with no examples, it has to guess what format you want<a class="ref" href="#ref-3">[3]</a>.</p>
+<p>The moon-landing example was a zero-shot prompt too. Base GPT-3 did what it was trained to do and continued the text. Predicting the next token of a web page is a different goal from following a user's instructions<a class="ref" href="#ref-2">[2]</a>.</p>
+<p>With a base model, though, we can still do a lot without any training: show it what we want, inside the prompt. That's next.</p>
+
+<!-- ================= PART 3 ================= -->
+<h2 id="fewshot"><span class="eyebrow">A3</span>Few-shot: learn from examples in the prompt</h2>
+<p>Instead of only describing the task, put a few solved examples in the prompt. The model picks up the pattern and continues it. This is called <b>in-context learning</b><a class="ref" href="#ref-3">[3]</a>.</p>
+<div class="wide" id="fx-shots"></div>
+<p class="figcap">Source: Brown et al. (2020), Figure 2.1</p>
+
+<!-- ================= PART 4 ================= -->
+<h2 id="cot"><span class="eyebrow">A4</span>Chain-of-thought: reasoning step by step</h2>
+<p>A few-shot example can show more than the answer. It can also show the steps that lead to the answer. The model copies that style, writes out its own steps, and gets more multi-step problems right<a class="ref" href="#ref-5">[5]</a>.</p>
+<div class="wide" id="fx-cot"></div>
+<p class="figcap">Source: Wei et al. (2022), Figure 1</p>
+
+<h3 id="cot-zero">Zero-shot chain-of-thought</h3>
+<p>You don't even need worked examples. Add one sentence where the answer starts, <i>“Let's think step by step”</i>, and the model writes out its reasoning on its own<a class="ref" href="#ref-6">[6]</a>.</p>
+<div id="fx-zscot"></div>
+<p class="figcap">Source: Kojima et al. (2022), Figure 1</p>
+<p>On MultiArith, a set of maths word problems, that one sentence lifts accuracy from 17.7% to 78.7%, beating eight solved examples<a class="ref" href="#ref-6">[6]</a>.</p>
+
+<h3 id="cot-why">Why does writing the steps help?</h3>
+<p>Remember how GPT generates text (L10): one token at a time, and every token gets one pass through the same stack of layers. That's a fixed amount of computation per token.</p>
+<div id="fx-compute"></div>
+<!-- ================= PART 5 ================= -->
+<h2 id="react"><span class="eyebrow">A5</span>ReAct: reason (CoT) + act (tool use)</h2>
+<p>Chain-of-thought happens entirely inside the model. If a fact it needs is wrong in there, every step built on it goes wrong too. <b>ReAct</b> (reason + act) lets the model use a tool between its thoughts. Here the tool is a Wikipedia search, and its results are pasted back into the prompt<a class="ref" href="#ref-7">[7]</a>.</p>
+<p>The question below needs two lookups in a row. Compare two prompting styles on it.</p>
+<div class="wide" id="fx-react"></div>
+<p class="figcap">Source: Yao et al. (2022), Figure 1</p>
+
+<h3 id="react-why">ReAct looks things up instead of making them up</h3>
+<p>The researchers went through failed answers by hand and sorted them by cause. Made-up facts caused <b>56%</b> of chain-of-thought's failures, and <b>0%</b> of ReAct's<a class="ref" href="#ref-7">[7]</a>.</p>
+
+<div class="note"><b class="t">The big picture</b>
+  <p>Thought, action, observation, repeat. That loop is an <b>agent</b> acting in an <b>environment</b>: it takes an action, the world answers with an observation, and it decides what to do next.</p>
+</div>
+
+<!-- ================= RECAP ================= -->
+<h2 id="recap"><span class="eyebrow">Recap</span>Comparison of prompting methods</h2>
+<div class="tblwrap"><table class="tbl">
+<tr><th>Technique</th><th>Weights change?</th><th>Needs examples?</th><th>When to use it</th></tr>
+<tr><td><b>Zero-shot</b></td><td>No</td><td>No</td><td>The model is instruction-tuned and the task is easy to describe.</td></tr>
+<tr><td><b>Few-shot</b></td><td>No</td><td>Yes, a few solved examples</td><td>You need a particular format, or you're working with a base model.</td></tr>
+<tr><td><b>Chain-of-thought</b></td><td>No</td><td>Yes, with worked steps</td><td>Problems that take several steps, like maths word problems.</td></tr>
+<tr><td><b>Zero-shot CoT</b></td><td>No</td><td>No, one extra sentence</td><td>Multi-step problems when you have no worked examples.</td></tr>
+<tr><td><b>ReAct</b></td><td>No</td><td>Yes, example traces</td><td>The answer depends on facts the model may not know, and a tool can look them up.</td></tr>
+</table></div>
+<p>Look at the second column: every technique leaves the weights alone. And yet in the moon-landing example, the same plain request failed on GPT-3 and worked on InstructGPT.</p>
+<p>Prompting changes what we ask. To change what the model <i>wants</i> to say, we change the weights.</p>
+
+<!-- ================= PART B1 ================= -->
+<h2 id="partb"><span class="eyebrow">Part B1</span>Why SFT isn't enough</h2>
+<p>Part A changed the input. Part B changes the <b>weights</b>: more training after pretraining. Here is where we are on the map from A1.</p>
+<div class="yah" data-here="rlhf"></div>
+<p>Stage 2, supervised fine-tuning (SFT), trains the model to copy answers that people wrote. It works, but it has two limits:</p>
+<ul>
+  <li><b>A ceiling.</b> A model trained to copy can, at best, write as well as the people it copies.</li>
+  <li><b>Cost.</b> Every example is a person writing a complete, careful answer. Even InstructGPT's SFT set was only about 13k prompts<a class="ref" href="#ref-2">[2]</a>.</li>
+</ul>
+<p>There is an easier job a person can do: <b>judge</b>. Picking the better of two answers takes seconds, and you can judge answers you could never have written yourself.</p>
+<div class="wide" id="fx-writejudge"></div>
+<p class="figcap">Source: OpenAI (2022)</p>
+
+<h3 id="b1-evidence">Judging works: one result</h3>
+<p><b>Summaries better than the human-written ones.</b> On summarising Reddit posts, a 1.3B model trained with human feedback was preferred to the human-written reference summaries 61% of the time. A supervised model ten times bigger (12.9B), trained to copy those references, reached 43%<a class="ref" href="#ref-10">[10]</a>.</p>
+<div id="fx-stiennon"></div>
+<p class="figcap">Source: Stiennon et al. (2020), Figure 1 (61% and 43% from the text; other values read off the figure)</p>
+
+<!-- ================= PART B2 ================= -->
+<h2 id="b2"><span class="eyebrow">Part B2</span>The reward model: judgments become a score</h2>
+<p>People can't judge every answer the model will ever write. So we train a second model to judge for them: the <b>reward model</b>. It reads a prompt and an answer, and outputs one number, a <span class="k-score"><b>score</b></span>. (In the papers, and in the equations below, this score is called the <b>reward</b>, written r.)</p>
+<ul>
+  <li>It's a language model with its last layer swapped: instead of probabilities for the next token (L10), it outputs a single number. InstructGPT used one 6B reward model for all three of its sizes (1.3B, 6B and 175B)<a class="ref" href="#ref-2">[2]</a>.</li>
+  <li>Labelers see 4 to 9 answers to the same prompt, written by the model, and rank them from best to worst. Every pair inside a ranking becomes one training example: 4 answers give 6 pairs, 9 give 36<a class="ref" href="#ref-2">[2]</a>.</li>
+  <li>For each pair, training raises the preferred answer's score and lowers the other's, until the preferred one is clearly ahead.</li>
+</ul>
+<p>Try it: you are the labeler. Both answer pairs below are real outputs from GPT-3 and InstructGPT.</p>
+<div class="wide" id="fx-labeler"></div>
+<p class="figcap">Source: Ouyang et al. (2022), Figure 9; OpenAI (2022)</p>
+<p class="fine">The answers are real; the score changes are illustrative.</p>
+
+<p>The reward model is trained on every labelled pair with this loss. It is small when the preferred answer's score is well above the rejected one's, and large when it is below:</p>
+$$\mathcal{L}_{RM} = -\log \sigma\big(\htmlClass{k-score}{r_\phi(x, y_w)} - \htmlClass{k-score}{r_\phi(x, y_l)}\big)$$
+<dl class="sym">
+  <dt>$x$</dt><dd>the prompt</dd>
+  <dt>$y_w,\ y_l$</dt><dd>the answer the labeler preferred (<i>w</i> for win) and the one they rejected (<i>l</i> for lose)</dd>
+  <dt>$\htmlClass{k-score}{r_\phi(x, y)}$</dt><dd>the reward model's <span class="k-score"><b>score</b></span> for answer $y$ to prompt $x$</dd>
+  <dt>$\phi$</dt><dd>the reward model's weights: the knobs that training turns (L4)</dd>
+  <dt>$\sigma$</dt><dd>the sigmoid from L1: squashes any number into 0 to 1. Here, σ(gap) is the chance that the reward model agrees with the labeler</dd>
+  <dt>$-\log$</dt><dd>turns that chance into a loss: near 0 when σ is close to 1, large when σ is close to 0</dd>
+</dl>
+<p class="eqsrc">Simplified from the InstructGPT paper's Eq. 1<a class="ref" href="#ref-2">[2]</a>. Dropped: the 𝔼 and the 1/C(K,2) factor, which together just mean "average over all labelled pairs".</p>
+<p>This is the loss from L1's <b>logistic regression</b>. The yes/no question is "did the labeler prefer y<sub>w</sub>?", and what goes into the sigmoid is the gap between the two scores.</p>
+
+<!-- ================= PART B3 ================= -->
+<h2 id="b3"><span class="eyebrow">Part B3</span>The RL loop, with a KL penalty</h2>
+<div class="yah" data-here="rlhf"></div>
+<p>We now have a reward model that can score any answer. The next step trains the language model to write answers that get high scores from it.</p>
+<p>This is <b>reinforcement learning</b> (RL). Nobody shows the model the right answer. It only finds out how good its own attempts were. That's the big difference from SFT, and from L4, where every training example came with the correct output.</p>
+<p>How does training make an answer "more likely"? With SFT's next-token training (L10), applied to the model's own answer and scaled by its score: a high score pushes the answer's token probabilities up, a low score pushes them down. This is called a <b>policy gradient</b>.</p>
+<div class="wide" id="fx-loop"></div>
+
+<h3 id="b3-hack">The catch: reward hacking</h3>
+<p>The reward model is an imitation of human judgment, learned from a limited number of comparisons. Push hard enough against it and the model finds answers that score high but that people don't actually like. This is <b>reward hacking</b>. For example, if the reward model slightly favours longer answers, the model learns to pad them: the score rises, but the answers are no better.</p>
+<p>In the summarisation work, optimising harder against the reward model first made summaries better, according to people, and then made them worse<a class="ref" href="#ref-10">[10]</a>; a controlled study found the same rise-then-fall, and that bigger reward models delay it<a class="ref" href="#ref-11">[11]</a>.</p>
+
+<h3 id="b3-leash">The fix: a KL penalty</h3>
+<p>Keep a <span class="k-leash"><b>reference model</b></span>, π<sub>ref</sub>: a copy of the SFT model whose weights never change during training (ref = reference). During training, measure the <span class="k-leash"><b>KL divergence</b></span> between the trained model and the reference model: a number that measures how differently two models assign probabilities to answers. It is 0 when they agree, and larger the more they disagree. Then subtract β × that number from the score. This is the <span class="k-leash"><b>KL penalty</b></span>: the model can improve, but each step away from the reference model costs something.</p>
+$$\max_\theta \;\; \htmlClass{k-score}{r_\phi(x, y)} \;-\; \htmlClass{k-leash}{\beta \log \frac{\pi_\theta(y \mid x)}{\pi_{ref}(y \mid x)}}$$
+<dl class="sym">
+  <dt>$\pi_\theta$</dt><dd>the model being trained; $\theta$ is its weights. In RL, the model being trained is called the <b>policy</b></dd>
+  <dt>$\pi_\theta(y \mid x)$</dt><dd>how likely the model is to write answer $y$ for prompt $x$: the next-token probabilities from L8 and L10, multiplied along the answer</dd>
+  <dt>$\htmlClass{k-score}{r_\phi(x, y)}$</dt><dd>the reward model's <span class="k-score"><b>score</b></span> for that answer (from B2)</dd>
+  <dt>$\htmlClass{k-leash}{\pi_{ref}}$</dt><dd>the <span class="k-leash"><b>reference model</b></span>: a copy of the SFT model whose weights never change (ref = reference)</dd>
+  <dt>$\htmlClass{k-leash}{\log(\pi_\theta / \pi_{ref})}$</dt><dd>how much more likely the trained model is to write $y$ than the reference model is: 0 if both find $y$ equally likely. Averaged over the model's own answers, this is the <span class="k-leash"><b>KL divergence</b></span></dd>
+  <dt>$\htmlClass{k-leash}{\beta}$</dt><dd>the <span class="k-leash"><b>KL coefficient</b></span>: how much each unit of KL divergence costs</dd>
+  <dt>$\max_\theta$</dt><dd>turn the knobs $\theta$ to make this as large as possible, averaged over prompts, where $y$ is an answer the model wrote itself</dd>
+</dl>
+<p class="eqsrc">Simplified from the InstructGPT paper's Eq. 2<a class="ref" href="#ref-2">[2]</a>. Dropped: the 𝔼 (average over prompts) and the γ term that mixes in pretraining data.</p>
+<p>The KL coefficient β is a trade-off. Pick a value for β and train:</p>
+<div class="wide" id="fx-leash"></div>
+
+<div class="note"><b class="t">Keep in mind</b>
+  <p>RLHF = a reward model learned from human comparisons, plus an RL loop that maximises the score minus a KL penalty to the SFT (reference) model. The penalty keeps the model close to the answers the reward model was trained on, where its scores can still be trusted.</p>
+</div>
+
+<!-- ================= PART B4 ================= -->
+<h2 id="b4"><span class="eyebrow">Part B4</span>PPO: the first way to run the loop</h2>
+<p>B3 described the loop: write, get scored, adjust. <b>PPO</b> (Proximal Policy Optimization) is the algorithm InstructGPT used to actually run it<a class="ref" href="#ref-2">[2]</a>.</p>
+<p>Two ideas make it work.</p>
+
+<h3 id="b4-adv">Idea 1: learn from "better than expected"</h3>
+<p>A score of 7 out of 10 is great on a hard prompt and poor on an easy one. So PPO adds another model, the <span class="k-critic"><b>critic</b></span>, which looks at the prompt and guesses the score an answer to it would usually get. What the model learns from is the difference, called the <b>advantage</b>:</p>
+<ul>
+  <li>The answer scored <b>above</b> the critic's guess: advantage positive, make this answer more likely.</li>
+  <li>It scored <b>below</b> the guess: advantage negative, make it less likely.</li>
+</ul>
+<p>The critic starts as a copy of the trained reward model (B2), and is trained alongside the model by regression (L2): its guess is pushed towards the total each answer actually got.</p>
+
+<h3 id="b4-clip">Idea 2: small steps</h3>
+<p>One answer that scored well by chance shouldn't change the model much. After every update, PPO compares the new model with the one from just before it. How much more (or less) likely the new model makes the answer is a ratio, ρ. Starting at ρ = 1, <b>clipping removes any gain from moving ρ past 0.8–1.2</b>. The model can still end up beyond that range, but nothing pulls it further. That's the <i>proximal</i>, "stay nearby", in PPO.</p>
+<p>This is not B3's KL penalty. The KL penalty keeps the model close to the <b>SFT model</b> over all of training; clipping keeps each update close to <b>the model just before it</b>.</p>
+<div class="wide" id="fx-clip"></div>
+<p class="figcap">Source: Schulman et al. (2017), Figure 1 (redrawn from the formula)</p>
+
+<p>Both ideas fit in one line:</p>
+$$L^{CLIP} = \min\big(\rho A,\ \text{clip}(\rho,\, 1-\epsilon,\, 1+\epsilon)\, A\big)$$
+$$\rho = \frac{\pi_\theta(y \mid x)}{\pi_{old}(y \mid x)}$$
+$$A = \htmlClass{k-score}{r_\phi(x, y)} - \htmlClass{k-leash}{\beta \log \frac{\pi_\theta(y \mid x)}{\pi_{ref}(y \mid x)}} - \htmlClass{k-critic}{V(x)}$$
+<dl class="sym">
+  <dt>$\pi_{old}$</dt><dd>the model as it was just before this update</dd>
+  <dt>$\rho$</dt><dd>how much more likely the updated model makes answer $y$ than before this update: 1 = no change, 1.2 = 20% more likely</dd>
+  <dt>$\htmlClass{k-critic}{V(x)}$</dt><dd>the <span class="k-critic"><b>critic</b></span>'s guess of the total for prompt $x$</dd>
+  <dt>$\htmlClass{k-leash}{\beta \log(\pi_\theta / \pi_{ref})}$</dt><dd>the <span class="k-leash"><b>KL penalty</b></span> from B3. The <span class="k-score"><b>score</b></span> minus this is the total</dd>
+  <dt>$A$</dt><dd>the <b>advantage</b>: the actual total (the <span class="k-score"><b>score</b></span> minus the KL penalty, from B3) minus the critic's guess. Positive = better than expected</dd>
+  <dt>$\epsilon$</dt><dd>sets the range 1 − ε to 1 + ε. InstructGPT used ε = 0.2, so the range is 0.8–1.2</dd>
+  <dt>$\text{clip},\ \min$</dt><dd>clip(ρ, 0.8, 1.2) is ρ pulled back into 0.8–1.2 inside the formula; min takes the smaller of the two versions. Together: clipping removes any gain from moving ρ past 0.8–1.2</dd>
+  <dt>$L^{CLIP}$</dt><dd>what training makes as large as possible, averaged over many answers</dd>
+</dl>
+<p class="eqsrc">Simplified from the PPO paper's Eq. 7<a class="ref" href="#ref-12">[12]</a>: the whole answer instead of one token at a time; A as the total (score minus the KL penalty, as in B3) minus the critic's guess, instead of GAE; dropped Ê and the value and entropy terms of Eq. 9. PPO writes ρ as r<sub>t</sub>(θ), and (x, y) as (s<sub>t</sub>, a<sub>t</sub>). ε = 0.2 is InstructGPT's setting<a class="ref" href="#ref-2">[2]</a>.</p>
+
+<h3 id="b4-cost">The cost: four models at once</h3>
+<ul>
+  <li><b>Memory:</b> the model being trained, the reference model (for the KL penalty), the reward model and the critic all sit in memory together. InstructGPT used a 6B reward model and a 6B critic, the critic starting as a copy of the reward model<a class="ref" href="#ref-2">[2]</a>.</li>
+  <li><b>Hard to tune:</b> four models and a loop, with several settings that must all be right at once, or training becomes unstable. InstructGPT kept its reward models at 6B partly because 175B ones trained unstably<a class="ref" href="#ref-2">[2]</a>.</li>
+</ul>
+
+<h3 id="b4-result">The result: GPT-3 becomes InstructGPT</h3>
+<p>This is the recipe behind the moon-landing example. SFT, then a reward model, then PPO turned GPT-3, which continued the moon-landing prompt with more prompts, into InstructGPT, which answered it<a class="ref" href="#ref-2">[2]</a>.</p>
+<ul>
+  <li><b>Preferred, even when much smaller:</b> labelers preferred the 1.3B InstructGPT to the 175B GPT-3, a model over 100× bigger<a class="ref" href="#ref-2">[2]</a>.</li>
+  <li><b>Fewer made-up facts:</b> on tasks where the answer should only use the input (like summarising), InstructGPT made up information 21% of the time, against GPT-3's 41%<a class="ref" href="#ref-2">[2]</a>.</li>
+</ul>
+
+<div class="note"><b class="t">Keep in mind</b>
+  <p>PPO = learn from "better than expected" (thanks to a critic) + small, clipped steps. It works, but it needs four models in memory and careful tuning. The next two methods each remove part of that cost.</p>
+</div>
+
+<!-- ================= PART B5 ================= -->
+<h2 id="b5"><span class="eyebrow">Part B5</span>DPO: skip the loop</h2>
+<p>PPO works, but it's heavy: four models, a loop that keeps writing and scoring new answers, and many settings to tune. RLHF done this way is complex and often unstable<a class="ref" href="#ref-13">[13]</a>. <b>DPO</b> (Direct Preference Optimization, 2023) asks: do we need the reward model and the loop at all?</p>
+
+<h3 id="b5-trick">The trick: the model is already a scorer</h3>
+<p>Go back to the objective from B3: score minus β × KL divergence. Working through its maths (which we'll skip) shows that the best model for that objective and the reward are tied together. So you can read a reward straight off the model: how much more likely the trained model makes an answer than the reference model does, times β. This is the <b>implicit reward</b>, and it gives the paper its title: "Your Language Model is Secretly a Reward Model"<a class="ref" href="#ref-13">[13]</a>.</p>
+<p>Now take the reward model's loss from B2 and swap the reward model's score for the implicit reward. Everything else stays:</p>
+<div class="wide eqw">$$\begin{aligned}\mathcal{L}_{RM} &= -\log \sigma\left(\htmlClass{k-swap}{\htmlClass{k-score}{r_\phi(x, y_w)}} - \htmlClass{k-swap}{\htmlClass{k-score}{r_\phi(x, y_l)}}\right)\\[14pt]\mathcal{L}_{DPO} &= -\log \sigma\left(\htmlClass{k-swap}{\beta \log \frac{\pi_\theta(y_w \mid x)}{\pi_{ref}(y_w \mid x)}} - \htmlClass{k-swap}{\beta \log \frac{\pi_\theta(y_l \mid x)}{\pi_{ref}(y_l \mid x)}}\right)\end{aligned}$$</div>
+<dl class="sym">
+  <dt>$x,\ y_w,\ y_l$</dt><dd>prompt, preferred answer, rejected answer (as in B2)</dd>
+  <dt>$\sigma,\ -\log$</dt><dd>the sigmoid and the loss on top of it (as in B2): small when the winner is clearly ahead</dd>
+  <dt>$\pi_\theta,\ \pi_{ref},\ \beta$</dt><dd>the model being trained, the reference model, and the KL coefficient (as in B3)</dd>
+  <dt><span class="k-swap">highlighted</span></dt><dd>the swap: the reward model's <span class="k-score"><b>score</b></span> $\htmlClass{k-score}{r_\phi(x, y)}$ becomes $\beta \log\big(\pi_\theta(y \mid x) / \pi_{ref}(y \mid x)\big)$, the implicit reward</dd>
+</dl>
+<p class="eqsrc">Simplified from the DPO paper's Eq. 7<a class="ref" href="#ref-13">[13]</a>: dropped the 𝔼, which means "average over all labelled pairs".</p>
+<p>In words, each training step looks at one labelled pair and makes the preferred answer more likely and the rejected one less likely, both measured against the reference model. The <span class="k-leash"><b>reference model</b></span>, and so the KL penalty, is now built into the loss itself. It's the same kind of training as B2, but now it trains the language model directly.</p>
+<p>Pairs the model already gets right (σ near 1) give a loss near 0 and barely change it; pairs it gets wrong give a large loss and a big push. So DPO learns most from the pairs it gets wrong.</p>
+
+<div class="wide" id="fx-pipe"></div>
+
+<h3 id="b5-cost">What it gives up</h3>
+<p>DPO learns only from a <b>fixed set</b> of preference pairs, collected beforehand (<b>offline</b>). It never writes a new answer during training and finds out how good it was, so it can't discover anything better than what is already in the pairs.</p>
+
+<h3 id="b5-result">Does it work?</h3>
+<p>DPO was tested on three tasks: steering movie reviews towards a positive sentiment, summarising Reddit posts, and single-turn dialogue<a class="ref" href="#ref-13">[13]</a>. On summaries, GPT-4 was the judge, after a check showed it agreed with human judges about as often as humans agree with each other. DPO's summaries beat the human-written reference about 61% of the time; PPO's best was 57%<a class="ref" href="#ref-13">[13]</a>. (Each was sampled at its best <i>temperature</i>, a setting for how random the generated text is.)</p>
+
+<div class="note"><b class="t">Keep in mind</b>
+  <p>DPO = B2's loss with the reward model swapped for the language model itself. Two models instead of four, no loop, no sampling. The price: it can only learn from the pairs it is given.</p>
+</div>
+<p>DPO can't try new answers. Reasoning needs exactly that, so DeepSeek went back to RL.</p>
+
+<!-- ================= PART B6 ================= -->
+<h2 id="b6"><span class="eyebrow">Part B6</span>GRPO: bring the loop back, without the critic</h2>
+<div class="yah" data-here="rl"></div>
+<p>DPO made training cheap by dropping the loop, but the loop is how a model discovers answers nobody has shown it. For reasoning, that's the whole point. <b>GRPO</b> (Group Relative Policy Optimization) keeps PPO's trial and error, and removes PPO's most expensive helper instead: the <span class="k-critic"><b>critic</b></span><a class="ref" href="#ref-14">[14]</a>.</p>
+<ul>
+  <li><b>A rule-based reward.</b> For maths and code, you don't need a learned reward model: check whether the final answer is right, or whether the code passes its tests. A rule has no learned judgment for the model to exploit.</li>
+  <li><b>Group-relative advantage.</b> Instead of asking a critic what score to expect, write a <b>group</b> of answers to the same question and compare each with the group's average. Answers that beat the group are pushed up, the rest down. The group's average estimates what an answer to this question usually scores, which is what PPO's critic had to learn. Dividing by the spread puts easy and hard questions on the same scale.</li>
+</ul>
+<div class="wide" id="fx-curve"></div>
+
+<p>The advantage, and the objective, next to PPO's:</p>
+$$\begin{aligned}\text{PPO:}\quad A &= \htmlClass{k-score}{r_\phi(x, y)} - \htmlClass{k-leash}{\beta \log \frac{\pi_\theta(y \mid x)}{\pi_{ref}(y \mid x)}} - \htmlClass{k-critic}{V(x)}\\[10pt]\text{GRPO:}\quad A_i &= \htmlClass{k-swap}{\frac{\htmlClass{k-score}{r_i} - \text{mean}(r_1, \dots, r_G)}{\text{std}(r_1, \dots, r_G)}}\end{aligned}$$
+<div class="wide eqw">$$\begin{aligned}L^{CLIP} &= \min\big(\rho \htmlClass{k-swap}{A},\ \text{clip}(\rho,\, 1-\epsilon,\, 1+\epsilon)\, \htmlClass{k-swap}{A}\big)\\[10pt]\mathcal{J}_{GRPO} &= \frac{1}{G}\sum_{i=1}^{G}\Big[\min\big(\rho_i \htmlClass{k-swap}{A_i},\ \text{clip}(\rho_i,\, 1-\epsilon,\, 1+\epsilon)\, \htmlClass{k-swap}{A_i}\big) - \htmlClass{k-leash}{\beta\, \mathbb{D}_{KL}(\pi_\theta \,\|\, \pi_{ref})}\Big]\end{aligned}$$</div>
+<dl class="sym">
+  <dt>$G$</dt><dd>the number of answers written for one question (DeepSeek-R1-Zero used 16)</dd>
+  <dt>$\htmlClass{k-score}{r_i}$</dt><dd>the <span class="k-score"><b>rule-based reward</b></span> for answer $i$, e.g. 1 if right and 0 if wrong</dd>
+  <dt>$\text{mean},\ \text{std}$</dt><dd>the group's average score, and how spread out the scores are</dd>
+  <dt>$A$</dt><dd>PPO's advantage, as in B4: the total minus the critic's guess $\htmlClass{k-critic}{V(x)}$</dd>
+  <dt>$A_i$</dt><dd>how far answer $i$ beat its group, in units of that spread. It replaces the critic: $\htmlClass{k-critic}{V(x)}$ is gone</dd>
+  <dt>$\rho_i,\ \epsilon$</dt><dd>as in B4, for answer $i$: clipping removes any gain from moving $\rho_i$ past 0.8–1.2</dd>
+  <dt>$\frac{1}{G}\sum_{i=1}^{G}$</dt><dd>average over the $G$ answers in the group</dd>
+  <dt>$\htmlClass{k-leash}{\beta\,\mathbb{D}_{KL}(\pi_\theta \,\|\, \pi_{ref})}$</dt><dd>the <span class="k-leash"><b>KL penalty</b></span> from B3: the KL divergence from the reference model, times β</dd>
+</dl>
+<p class="eqsrc">The sequence-level form from the DeepSeek-R1 paper's Eq. 1 and 3<a class="ref" href="#ref-4">[4]</a> (dropped 𝔼); the original per-token form is the DeepSeekMath paper's Eq. 3<a class="ref" href="#ref-14">[14]</a>. DeepSeek writes the prompt and answers as q and o<sub>i</sub>.</p>
+
+<h3 id="b6-r1">DeepSeek-R1-Zero: reasoning from right answers alone</h3>
+<p>GRPO was introduced with DeepSeekMath, where RL took a 7B maths model from 46.8% to 51.7% on the MATH benchmark (and from 82.9% to 88.2% on GSM8K). There, the score still came from a learned reward model<a class="ref" href="#ref-14">[14]</a>.</p>
+<p>DeepSeek-R1-Zero went further<a class="ref" href="#ref-4">[4]</a>:</p>
+<ul>
+  <li><b>No SFT first:</b> RL started straight from the pretrained base model.</li>
+  <li><b>Rules, not a reward model:</b> one reward for a correct final answer, one for the right format (thinking inside <code>&lt;think&gt;</code> tags). The paper avoided learned reward models because they get hacked during large-scale RL.</li>
+  <li><b>16 answers per question</b>, compared with each other by GRPO.</li>
+</ul>
+<div class="wide" id="fx-r1"></div>
+<p class="figcap">Source: DeepSeek-AI (2025), Figure 1 (15.6% and 77.9% from the text; other values read off the figure)</p>
+<p>Remember <a href="#cot">A4</a>: to get step-by-step working, we had to ask for it, with worked examples or <i>Let's think step by step</i>. Nobody asked R1-Zero. It was only ever rewarded for right answers, and writing longer chains of thought is what earned them, so its answers grew longer by themselves.</p>
+<p>R1-Zero had flaws: its reasoning was often hard to read, and it mixed languages (English and Chinese) within one answer. The released DeepSeek-R1 fixed this by first fine-tuning on thousands of readable worked examples (a small SFT step), then running RL with an extra reward for staying in one language<a class="ref" href="#ref-4">[4]</a>.</p>
+
+<div class="note"><b class="t">Keep in mind</b>
+  <p>GRPO = PPO's loop and clipped steps, with the critic replaced by "how did this answer do compared with its group?". Two models plus a rule-based reward. It needs a score you can trust, which is why it shines on maths and code.</p>
+</div>
+
+<!-- ================= PART B7 ================= -->
+<h2 id="b7"><span class="eyebrow">Part B7</span>Limitations</h2>
+<p>Learning from human judgments is powerful, but the model can only be as good as the judgments, and the scorer built from them.</p>
+<div class="cards wide900">
+  <div class="card"><h4>Whose preferences?</h4>
+    <p>InstructGPT's labels came from about 40 contractors, mostly English speakers in the United States or Southeast Asia. They followed instructions written by the researchers, on prompts sent in by the company's API customers, and agreed with each other only about 73% of the time<a class="ref" href="#ref-2">[2]</a>.</p>
+    <p>"Aligned" means aligned with <b>that</b> group.</p></div>
+  <div class="card"><h4>Sycophancy</h4>
+    <p>People tend to prefer answers that agree with them, so rewarding what people prefer also rewards agreement. When a user replied “I don't think that's right. Are you sure?”, Claude 1.3 wrongly admitted to a mistake on 98% of questions<a class="ref" href="#ref-15">[15]</a>.</p>
+    <p>On the hardest misconceptions, a preference model preferred the flattering answer over the truthful one 45% of the time<a class="ref" href="#ref-15">[15]</a>.</p></div>
+  <div class="card"><h4>Reward hacking</h4>
+    <p>As in <a href="#b3-hack">B3</a>: a learned scorer is only an imitation of human judgment, and pushing hard against it finds answers that score well but aren't good. The KL penalty and bigger reward models delay this; they don't remove it.</p></div>
+  <div class="card"><h4>Human labels are expensive</h4>
+    <p>One answer: let an AI do some of the judging. In <b>Constitutional AI</b>, an AI compares pairs of answers against a short written list of principles, the "constitution"<a class="ref" href="#ref-16">[16]</a>.</p>
+    <p>In that work, AI feedback replaced human labels only for <b>harmlessness</b>; labels for helpfulness still came from people<a class="ref" href="#ref-16">[16]</a>.</p></div>
+</div>
+
+<!-- ================= PART B SUMMARY ================= -->
+<h2 id="family"><span class="eyebrow">Part B summary</span>PPO, DPO and GRPO, side by side</h2>
+<p>Pick a method with the chips and step through it. All three train the same model, but they use different models around it. DPO and GRPO each fix a different problem with PPO, in opposite directions: DPO drops the loop, GRPO keeps the loop and drops the critic.</p>
+<div class="wide" id="fx-arch"></div>
+<p class="figcap">Sources: Ouyang et al. (2022); Rafailov et al. (2023); Shao et al. (2024); DeepSeek-AI (2025)</p>
+<div class="tblwrap"><table class="tbl">
+<tr><th></th><th>PPO (RLHF)</th><th>DPO</th><th>GRPO</th></tr>
+<tr><td><b>Learns from</b></td><td>scores on fresh answers</td><td>fixed human preference pairs</td><td>scores on fresh answers</td></tr>
+<tr><td><b>Who scores</b></td><td>reward model</td><td>nobody, the pairs are enough</td><td>rule-based reward (R1-Zero) or reward model</td></tr>
+<tr><td><b>Models in memory</b></td><td>4: model (trained), critic (trained), reward model (frozen), reference model (frozen)</td><td>2: model (trained), reference model (frozen)</td><td>2: model (trained), reference model (frozen), plus a rule-based reward or a frozen reward model</td></tr>
+<tr><td><b>Tries new answers?</b></td><td>yes</td><td>no</td><td>yes</td></tr>
+<tr><td><b>Fixed what?</b></td><td>SFT's ceiling</td><td>PPO's complexity</td><td>PPO's critic cost, keeps exploration</td></tr>
+<tr><td><b>Weak spot</b></td><td>heavy, unstable, reward hacking</td><td>can't explore</td><td>needs a reliable score</td></tr>
+</table></div>
+
+<!-- ================= WRAP-UP ================= -->
+<h2 id="wrap"><span class="eyebrow">Wrap-up</span>Putting it together</h2>
+<ul>
+  <li><b>Zero-shot:</b> describe the task and ask. Works on instruction-tuned models; a base model tends to just continue the text.</li>
+  <li><b>Few-shot:</b> put solved examples in the prompt. The model learns the task in context, with no gradient step.</li>
+  <li><b>Chain-of-thought:</b> show worked steps in the examples, and the model writes out its own. Each written step is more computation before the answer.</li>
+  <li><b>Zero-shot CoT:</b> no examples, just <i>Let's think step by step</i>. Reasoning models now do this unprompted, because they were trained to.</li>
+  <li><b>ReAct:</b> interleave thoughts with tool calls. It looks facts up instead of making them up.</li>
+  <li><b>Post-training (RLHF):</b> people compare answers, a reward model learns to score them, and an RL loop pushes the model towards high scores, with a KL penalty to the SFT model. PPO runs that loop with a critic; DPO skips the loop and trains on the pairs directly; GRPO keeps the loop but compares each answer with its group, which is how reasoning models like DeepSeek-R1 learned to think at length.</li>
+</ul>
+<h3 id="reading">Reading</h3>
+<ol class="refs">
+  <li id="ref-1">OpenAI, <i>Aligning language models to follow instructions</i> (blog post, January 2022)</li>
+  <li id="ref-2">Ouyang et al., <a href="https://arxiv.org/abs/2203.02155">Training language models to follow instructions with human feedback</a> (2022)</li>
+  <li id="ref-3">Brown et al., <a href="https://arxiv.org/abs/2005.14165">Language Models are Few-Shot Learners</a> (2020)</li>
+  <li id="ref-4">DeepSeek-AI, <a href="https://arxiv.org/abs/2501.12948">DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning</a> (2025)</li>
+  <li id="ref-5">Wei et al., <a href="https://arxiv.org/abs/2201.11903">Chain-of-Thought Prompting Elicits Reasoning in Large Language Models</a> (2022)</li>
+  <li id="ref-6">Kojima et al., <a href="https://arxiv.org/abs/2205.11916">Large Language Models are Zero-Shot Reasoners</a> (2022)</li>
+  <li id="ref-7">Yao et al., <a href="https://arxiv.org/abs/2210.03629">ReAct: Synergizing Reasoning and Acting in Language Models</a> (2022)</li>
+  <li id="ref-8">Sharma, Stanford CS224N, <a href="https://web.stanford.edu/class/archive/cs/cs224n/cs224n.1246/slides/cs224n-spr2024-lecture10-prompting-rlhf.pdf">Lecture 10: Prompting, Instruction Finetuning, and DPO/RLHF</a> (slides, 2024)</li>
+  <li id="ref-9">Christiano et al., <a href="https://arxiv.org/abs/1706.03741">Deep Reinforcement Learning from Human Preferences</a> (2017)</li>
+  <li id="ref-10">Stiennon et al., <a href="https://arxiv.org/abs/2009.01325">Learning to Summarize from Human Feedback</a> (2020)</li>
+  <li id="ref-11">Gao et al., <a href="https://arxiv.org/abs/2210.10760">Scaling Laws for Reward Model Overoptimization</a> (2022)</li>
+  <li id="ref-12">Schulman et al., <a href="https://arxiv.org/abs/1707.06347">Proximal Policy Optimization Algorithms</a> (2017)</li>
+  <li id="ref-13">Rafailov et al., <a href="https://arxiv.org/abs/2305.18290">Direct Preference Optimization: Your Language Model is Secretly a Reward Model</a> (2023)</li>
+  <li id="ref-14">Shao et al., <a href="https://arxiv.org/abs/2402.03300">DeepSeekMath: Pushing the Limits of Mathematical Reasoning in Open Language Models</a> (2024)</li>
+  <li id="ref-15">Sharma et al., <a href="https://arxiv.org/abs/2310.13548">Towards Understanding Sycophancy in Language Models</a> (2023)</li>
+  <li id="ref-16">Bai et al., <a href="https://arxiv.org/abs/2212.08073">Constitutional AI: Harmlessness from AI Feedback</a> (2022)</li>
+  <li id="ref-17">Karpathy, <i>State of GPT</i> (talk, Microsoft Build 2023, video)</li>
+</ol>
+</div>
+
+<script>
+(function(){
+'use strict';
+/* ---------- helpers (L08) ---------- */
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const rangeOf=s=>{const p=String(s).split('-');return[+p[0],p.length>1&&p[1]!==''?+p[1]:+p[0]];};
+const isDark=()=>document.documentElement.getAttribute('data-theme')==='dark';
+const onTheme=f=>window.addEventListener('themechange',f);
+
+/* ---------- step-through figure ----------
+   L08's declarative fig() (data-show / data-hide / data-hl / data-grp, arrow keys)
+   with L04's control bar: Play / Back / Next / Restart, "n / N" counter, caption bar.
+   cfg: {html|svg, side, chips:{label, items:[[v,text]], value, restart}, caps: [..] | (step,chip)=>html,
+         count: n | (chip)=>n, groups: [[..]] | (step,chip)=>[..], onStep(step,chip,root), dwell} */
+function fig(id,cfg){
+  const root=document.getElementById(id); if(!root) return null;
+  root.classList.add('tp'); root.tabIndex=0;
+  let step=0,timer=null,chip=cfg.chips?cfg.chips.value:null;
+  const chipsHtml=cfg.chips?'<div class="chips" data-group="'+id+'">'+(cfg.chips.label?'<span>'+cfg.chips.label+'</span>':'')+
+    cfg.chips.items.map(([v,t])=>'<button type="button" class="chip" data-v="'+v+'" aria-pressed="'+(v===chip)+'">'+t+'</button>').join('')+'</div>':'';
+  const stage=cfg.svg||cfg.html||'';
+  root.innerHTML=chipsHtml+(cfg.side?'<div class="tp-grid '+(cfg.gridClass||'')+'"><div class="tp-stage">'+stage+'</div><div class="tp-side">'+cfg.side+'</div></div>':'<div class="tp-stage">'+stage+'</div>')+
+    '<div class="tp-ctl"><button type="button" data-act="play">Play</button><button type="button" data-act="prev">&larr; Back</button><button type="button" data-act="next">Next &rarr;</button><button type="button" data-act="reset">Restart</button><span class="tp-count"></span></div><div class="tp-cap" aria-live="polite"></div>';
+  const cap=$('.tp-cap',root),cnt=$('.tp-count',root),bPlay=$('[data-act=play]',root),bPrev=$('[data-act=prev]',root),bNext=$('[data-act=next]',root);
+  const N=()=>typeof cfg.count==='function'?cfg.count(chip):(cfg.count||cfg.caps.length);
+  function apply(){
+    const n=N(); step=clamp(step,0,n-1);
+    if(cfg.onStep) cfg.onStep(step,chip,root);
+    $$('[data-show],[data-hide],[data-hl],[data-grp]',root).forEach(el=>{
+      const d=el.dataset; let gone=false;
+      if(d.show!==undefined&&step<+d.show) gone=true;
+      if(d.hide!==undefined&&step>=+d.hide) gone=true;
+      el.classList.toggle('gone',gone);
+      if(d.hl!==undefined){const on=d.hl.split(' ').some(r=>{const[a,b]=rangeOf(r);return step>=a&&step<=b;});el.classList.toggle('on',on);if(el.classList.contains('cl'))el.classList.toggle('off',!on);}
+      if(d.grp!==undefined&&cfg.groups){const act=(typeof cfg.groups==='function'?cfg.groups(step,chip):cfg.groups[step])||['*'];const dim=!act.includes('*')&&!d.grp.split(' ').some(g=>act.includes(g));el.classList.toggle('dim',dim);}
+    });
+    cap.innerHTML=typeof cfg.caps==='function'?cfg.caps(step,chip):cfg.caps[step];
+    cnt.textContent=(step+1)+' / '+n;
+    bPrev.disabled=step===0; bNext.disabled=step===n-1;
+    bPlay.textContent=timer?'Pause':'Play';
+  }
+  function stop(){if(timer){clearTimeout(timer);timer=null;}}
+  function tick(){if(step>=N()-1){stop();apply();return;} step++; apply(); timer=setTimeout(tick,cfg.dwell||2600);}
+  function play(){if(timer){stop();apply();return;} if(step>=N()-1) step=0; timer=setTimeout(tick,cfg.dwell||2600); apply();}
+  function go(s){stop();step=s;apply();}
+  bPlay.onclick=play;
+  bPrev.onclick=()=>go(step-1);
+  bNext.onclick=()=>go(step+1);
+  $('[data-act=reset]',root).onclick=()=>go(0);
+  root.addEventListener('keydown',e=>{
+    if(e.key==='ArrowRight'){go(step+1);e.preventDefault();}
+    else if(e.key==='ArrowLeft'){go(step-1);e.preventDefault();}
+  });
+  // clicking anywhere in a figure gives it the arrow keys
+  root.addEventListener('pointerdown',e=>{if(!e.target.closest('button,a,input,select')) root.focus({preventScroll:true});});
+  if(cfg.chips) $('.chips',root).addEventListener('click',e=>{
+    const b=e.target.closest('button[data-v]'); if(!b) return;
+    chip=b.dataset.v;
+    $$('.chips button[data-v]',root).forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+    if(cfg.chips.restart){stop();step=0;}
+    apply();
+  });
+  apply();
+  return {go,root,get step(){return step;},get chip(){return chip;}};
+}
+
+/* ---------- theme ---------- */
+$('#themetoggle').addEventListener('click',()=>{
+  const d=!isDark();
+  if(d) document.documentElement.setAttribute('data-theme','dark'); else document.documentElement.removeAttribute('data-theme');
+  try{localStorage.setItem('l11-theme',d?'dark':'light');}catch(_){}
+  window.dispatchEvent(new Event('themechange'));
+});
+
+/* ---------- nav highlight ---------- */
+const navIds=$$('#navlinks a').map(a=>a.getAttribute('href').slice(1));
+function navUpdate(){
+  let cur=null;
+  navIds.forEach(id=>{const el=document.getElementById(id);if(el&&el.getBoundingClientRect().top<160) cur=id;});
+  $$('#navlinks a').forEach(a=>a.classList.toggle('on',a.getAttribute('href')==='#'+cur));
+}
+window.addEventListener('scroll',navUpdate,{passive:true}); navUpdate();
+
+window.__lec={$,$$,clamp,esc,fig,isDark,onTheme};
+})();
+</script>
+
+<script>
+(function(){
+'use strict';
+const {esc,fig}=window.__lec;
+
+/* ===== §0 hook: GPT-3 vs InstructGPT (outputs verbatim: outputs/examples.json hook.*) ===== */
+(function(){
+  const PROMPT='Explain the moon landing to a 6 year old in a few sentences.';
+  const OUT={
+    gpt3:{name:'GPT-3',tag:'base model',text:['Explain the theory of gravity to a 6 year old.','Explain the theory of relativity to a 6 year old in a few sentences.','Explain the big bang theory to a 6 year old.','Explain evolution to a 6 year old.']},
+    inst:{name:'InstructGPT',tag:'GPT-3 + human feedback',text:['People went to the moon, and they took pictures of what they saw, and sent them back to the earth so we could all see them.']}
+  };
+  const box=(k,show)=>'<div class="codebox io"><div class="codebox-title">Completion · '+OUT[k].name+'<span class="pill">'+OUT[k].tag+'</span></div>'+
+    (show?OUT[k].text.map(t=>'<p class="txt">'+esc(t)+'</p>').join(''):'<p class="txt wait">What will it write?</p>')+'</div>';
+  fig('fx-hook',{
+    html:'<div class="codebox io"><div class="codebox-title">Prompt</div><p class="txt">'+esc(PROMPT)+'</p></div><div class="hook-outs"></div>',
+    chips:{label:'Model:',items:[['gpt3','GPT-3 (base)'],['inst','InstructGPT']],value:'gpt3'},
+    count:3,
+    onStep(step,chip,root){
+      const outs=root.querySelector('.hook-outs');
+      outs.classList.toggle('two',step===2);
+      outs.innerHTML=step===2?box('gpt3',true)+box('inst',true):box(chip,step===1);
+    },
+    caps(step,chip){
+      if(step===0) return 'Someone types this prompt. Before we look: what would a model that only <b>predicts the next word</b> write after it?';
+      if(step===1) return chip==='gpt3'
+        ? '<b>GPT-3</b> doesn\'t answer. It <b>continues the text</b> with more prompts in the same style. For a next-word predictor, that\'s a sensible guess at what comes next.'
+        : '<b>InstructGPT</b> treats the text as a <b>request</b>, and answers it in a few simple sentences.';
+      return 'Same architecture, same pretraining. <b>What changed?</b>';
+    }
+  });
+})();
+
+/* ===== A1: training stages (sources: examples.json phases.*) ===== */
+(function(){
+  const S=(grp,hl,n,title,color,data,learns,chat,ex,badge)=>
+    '<div class="stage" data-grp="'+grp+'" data-hl="'+hl+'">'+(badge?'<span class="badge">'+badge+'</span>':'')+
+    '<h4 style="background:var('+color+')"><small>Stage '+n+'</small>'+title+'</h4>'+
+    '<dl><dt>Data</dt><dd>'+data+'</dd><dt>It learns to</dt><dd>'+learns+'</dd><dt>Chat with it?</dt><dd>'+chat+'</dd><dt>Examples</dt><dd>'+ex+'</dd></dl></div>';
+  const html='<div class="stages">'+
+    S('pre','1',1,'Pretraining','--box-ffn','Web pages, books, Wikipedia. GPT-3: 300 billion tokens.','Predict the next token.','No: it continues your text (the moon-landing example).','GPT-3, LLaMA (<b>base models</b>)')+
+    S('sft','2',2,'Supervised fine-tuning (SFT)','--box-soft','Prompts with answers written by people. InstructGPT: ~13k prompts.','Imitate the demonstrated answers.','Yes, but only as well as the answers it copied.','Vicuna-13B')+
+    S('rlhf','3',3,'Preference tuning (RLHF)','--box-attn','People rank the model\'s answers (~33k prompts), then RL on ~31k more.','Give the answers people prefer.','Yes: an assistant.','InstructGPT, ChatGPT, Claude','Today · Part B')+
+    S('rl','4',4,'RL for reasoning','--box-lin','Maths, coding and logic problems with checkable answers.','Get the final answer right, by thinking at length.','Yes, and it thinks before answering.','DeepSeek-R1')+
+    '</div>'+
+    '<div class="usebar" data-grp="prompt" data-hl="5"><b class="k">Prompting</b><span><b>Using</b> the finished model. Not a training stage: no data collection, no training, no weights change. <b>Part A</b>, starting now.</span></div>';
+  fig('fx-phases',{
+    html,
+    groups:[['*'],['pre'],['sft'],['rlhf'],['rl'],['prompt']],
+    caps:[
+      'A modern chat model is built in <b>stages</b>. Every stage <b>changes the weights</b>, the knobs from L4. Step through them.',
+      '<b>Pretraining</b> is L9\'s fill in the blank at enormous scale: predict the next token, again and again. GPT-3 trained on 300 billion tokens of filtered web pages, books and Wikipedia. Out comes a <b>base model</b>: the GPT-3 from the moon-landing example. This is where almost all the compute goes: thousands of GPUs for months.',
+      '<b>Supervised fine-tuning</b>: people write good answers to prompts, and the model is trained to imitate them. It\'s the same next-token training, but on demonstrations. InstructGPT used about 13k prompts. Every stage after this is far cheaper: days, not months.',
+      '<b>Preference tuning (RLHF)</b>: the model writes several answers and people rank them. A reward model learns to predict those rankings, and then RL nudges the model towards answers that score well. This is <b>Part B</b> of today.',
+      '<b>RL for reasoning</b>: reward only a correct final answer on problems that can be checked automatically. DeepSeek-R1-Zero was not taught how to reason, yet it learned to write longer and longer chains of thought during RL.',
+      'And <b>prompting</b>? It isn\'t a stage at all. It\'s how we <b>use</b> the finished model, and the weights never move. That\'s the rest of Part A.'
+    ]
+  });
+})();
+/* ===== A3: zero / one / few-shot prompt (verbatim: examples.json fewshot.*) ===== */
+(function(){
+  const {esc}=window.__lec;
+  const EX=['sea otter => loutre de mer','peppermint => menthe poivrée','plush girafe => girafe peluche'];
+  const N={zero:0,one:1,few:3}, NAME={zero:'Zero-shot',one:'One-shot',few:'Few-shot'};
+  const line=(t,lb,hl,cls)=>'<div class="cl lab '+(cls||'')+'" data-hl="'+hl+'"><span>'+esc(t)+'</span><span class="lb">'+(lb||'')+'</span></div>';
+  function code(k){
+    const n=N[k];
+    let h='<div class="codebox prompt"><div class="codebox-title">'+NAME[k]+' prompt</div>'+line('Translate English to French:','task description','0');
+    if(!n) h+='<div class="cl empty" data-hl="1"><span class="cm">(no examples)</span></div>';
+    for(let i=0;i<n;i++) h+=line(EX[i],i===0?(n>1?'examples':'example'):'','1','add');
+    h+=line('cheese =>','prompt','2');
+    if(n) h+='<div class="codebox-note"><b class="plus">+</b> added to the prompt</div>';
+    return h+'</div>';
+  }
+  window.__lec.fig('fx-shots',{
+    html:'<div class="shots-code"></div>',
+    chips:{label:'Setting:',items:[['zero','Zero-shot'],['one','One-shot'],['few','Few-shot']],value:'few'},
+    count:4,
+    onStep(step,chip,root){ root.querySelector('.shots-code').innerHTML=code(chip); },
+    caps(step,chip){
+      if(step===0) return 'Every setting starts with the same <b>task description</b>.';
+      if(step===1) return {zero:'<b>Zero-shot</b>: no examples. The model has only the description to go on.',
+        one:'<b>One-shot</b>: add one solved <b>example</b>. Now the model can see the format: English, then <code>=&gt;</code>, then French.',
+        few:'<b>Few-shot</b>: add several solved <b>examples</b>. In the paper\'s experiments, few-shot typically meant a few dozen.'}[chip];
+      if(step===2) return 'Then the <b>prompt</b>: the word we actually want translated. The model continues the text after <code>=&gt;</code>.';
+      return 'What didn\'t happen: <b>no gradient step</b>. The weights are exactly what they were before. Everything the model picked up came from the text of the prompt.';
+    }
+  });
+})();
+
+/* ===== A4: standard vs chain-of-thought (verbatim: examples.json cot.*) ===== */
+(function(){
+  const {fig}=window.__lec;
+  const Q1='Q: Roger has 5 tennis balls. He buys 2 more cans of tennis balls. Each can has 3 tennis balls. How many tennis balls does he have now?';
+  const Q2='Q: The cafeteria had 23 apples. If they used 20 to make lunch and bought 6 more, how many apples do they have?';
+  const col=(title,a1,out)=>'<div><h4>'+title+'</h4>'+
+    '<div class="codebox io"><div class="codebox-title">Model input</div>'+
+      '<p class="txt q">'+Q1+'</p><p class="txt" data-show="1">'+a1+'</p><p class="txt q" data-show="2">'+Q2+'</p></div>'+
+    '<div class="codebox io"><div class="codebox-title">Model output</div><p class="txt">'+out+'</p></div></div>';
+  const std=col('Standard prompting','A: The answer is 11.',
+    '<span data-show="3">A: The answer is 27.<span class="verdict bad">✗ wrong</span></span>');
+  const cot=col('Chain-of-thought prompting',
+    'A: <span class="reason ex">Roger started with 5 balls. 2 cans of 3 tennis balls each is 6 tennis balls. 5 + 6 = 11.</span> The answer is 11.',
+    '<span data-show="4">A: <span class="reason out">The cafeteria had 23 apples originally. They used 20 to make lunch.</span></span>'+
+    '<span data-show="5"> <span class="reason out">So they had 23 - 20 = 3.</span></span>'+
+    '<span data-show="6"> <span class="reason out">They bought 6 more apples, so they have 3 + 6 = 9.</span> The answer is 9.<span class="verdict good">✓ right</span></span>');
+  fig('fx-cot',{
+    html:'<div class="cot-cols">'+std+cot+'</div>',
+    caps:[
+      'Both prompts start with the same solved example question.',
+      'The only difference is the example\'s answer. Standard prompting gives just the answer. <b>Chain-of-thought</b> prompting <b>shows the working</b> first.',
+      'Then the real question, the same in both prompts.',
+      'Standard prompting: the model jumps straight to an answer, <b>27</b>. Wrong: 23 − 20 + 6 = 9.',
+      'Chain-of-thought: the model copies the style of the example, and starts by laying out the facts.',
+      'Each step is small and easy: 23 − 20 = 3.',
+      'And the final answer comes out right: <b>9</b>. The question didn\'t change; only the example in the prompt did.'
+    ]
+  });
+})();
+
+/* ===== A4: zero-shot CoT example (verbatim: examples.json zscot.example.*) ===== */
+(function(){
+  const {fig}=window.__lec;
+  const Q='Q: A juggler can juggle 16 balls. Half of the balls are golf balls, and half of the golf balls are blue. How many blue golf balls are there?';
+  const IN={zero:'A: The answer (arabic numerals) is',cot:'A: <span class="trigger">Let’s think step by step.</span>'};
+  const OUT={zero:'8<span class="verdict bad">✗ wrong</span>',
+    cot:'<span class="reason out">There are 16 balls in total. Half of the balls are golf balls. That means that there are 8 golf balls. Half of the golf balls are blue. That means that there are 4 blue golf balls.</span><span class="verdict good">✓ right</span>'};
+  fig('fx-zscot',{
+    html:'<div class="zs"></div>',
+    chips:{label:'Prompt:',items:[['zero','Zero-shot'],['cot','Zero-shot-CoT']],value:'zero'},
+    count:2,
+    onStep(step,chip,root){
+      root.querySelector('.zs').innerHTML='<div class="codebox io"><div class="codebox-title">Model input</div><p class="txt q">'+Q+'</p><p class="txt">'+IN[chip]+'</p></div>'+
+        '<div class="codebox io" style="margin-top:12px"><div class="codebox-title">Model output</div><p class="txt'+(step?'':' wait')+'">'+(step?OUT[chip]:'What will it write?')+'</p></div>';
+    },
+    caps(step,chip){
+      if(chip==='zero') return step?'The model answers <b>8</b> straight away. Wrong: 8 of the balls are golf balls, and half of those, <b>4</b>, are blue.'
+        :'Zero-shot: the question, then the start of an answer. "(arabic numerals)" asks for digits, like 8 rather than "eight", so the answer can be checked automatically.';
+      return step?'Now the model writes out the steps itself and reaches <b>4</b>. No examples, just one extra sentence.'
+        :'Zero-shot-CoT: the same question, but the answer starts with <b>Let’s think step by step.</b>';
+    }
+  });
+})();
+
+/* ===== A4: why steps help: a fixed amount of work per token (illustrative) ===== */
+(function(){
+  const {fig}=window.__lec;
+  const W=780,H=410;
+  const stack=(x,y,cls)=>'<g class="'+(cls||'')+'"><rect x="'+x+'" y="'+y+'" width="32" height="46" rx="5" fill="var(--box-ffn)" stroke="var(--fg-faint)"/>'+
+    [1,2,3].map(k=>'<line x1="'+(x+4)+'" y1="'+(y+k*11.5)+'" x2="'+(x+28)+'" y2="'+(y+k*11.5)+'" stroke="var(--fg-faint)"/>').join('')+'</g>';
+  const chip=(x,y,t,w,hl)=>'<rect x="'+x+'" y="'+y+'" width="'+w+'" height="32" rx="6" fill="'+(hl?'var(--hl-bg)':'var(--surface)')+'" stroke="'+(hl?'var(--hl-bar)':'var(--border)')+'" stroke-width="1.5"/><text x="'+(x+w/2)+'" y="'+(y+22)+'" text-anchor="middle" font-size="16" fill="var(--fg-strong)">'+t+'</text>';
+  function row(y,label,toks,show,hlIdx){
+    let s='<text x="20" y="'+(y-74)+'" font-size="17" font-weight="700" fill="var(--fg-strong)">'+label+'</text>';
+    s+='<rect x="20" y="'+y+'" width="96" height="32" rx="6" fill="var(--box-bg)" stroke="var(--border)"/><text x="68" y="'+(y+22)+'" text-anchor="middle" font-size="16" fill="var(--fg-mid)">prompt</text>';
+    let x=128, g='';
+    toks.forEach((t,i)=>{
+      const w=Math.max(36,t.length*10+18);
+      g+=stack(x+(w-32)/2,y-58)+'<line x1="'+(x+w/2)+'" y1="'+(y-12)+'" x2="'+(x+w/2)+'" y2="'+(y-2)+'" stroke="var(--fg-faint)" stroke-width="1.5"/>'+chip(x,y,t,w,i===hlIdx);
+      x+=w+6;
+    });
+    return s+'<g data-show="'+show+'">'+g+'</g>';
+  }
+  const top=row(124,'Answer immediately',['The','answer','is','27'],1,3);
+  const cotT=['They','had','23','-','20','=','3','.','…','3','+','6','=','9'];
+  const bot=row(318,'Write the steps first',cotT,2,6);
+  // attention: the written 3 is read again later
+  const xs=[];let x=128;cotT.forEach(t=>{const w=Math.max(36,t.length*10+18);xs.push(x+w/2);x+=w+6;});
+  const arc='<g data-show="3"><path d="M'+xs[6]+',352 C'+xs[6]+',398 '+xs[9]+',398 '+xs[9]+',352" fill="none" stroke="var(--hl-bar)" stroke-width="3" marker-end="url(#l11ah)"/>'+
+    '<text x="'+((xs[6]+xs[9])/2)+'" y="404" text-anchor="middle" font-size="16" fill="var(--fg-mid)">later steps read it back</text></g>';
+  const defs='<defs><marker id="l11ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M1 1L9 5L1 9z" fill="var(--hl-bar)"/></marker></defs>';
+  const key='<g>'+stack(W-230,16)+'<text x="'+(W-188)+'" y="36" font-size="16" fill="var(--fg-mid)">= one pass through</text><text x="'+(W-188)+'" y="58" font-size="16" fill="var(--fg-mid)">all the layers</text></g>';
+  fig('fx-compute',{
+    svg:'<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Each output token gets one pass through the model">'+defs+key+top+bot+arc+
+      '<text x="'+(W-20)+'" y="'+(H-8)+'" text-anchor="end" font-size="16" fill="var(--fg-muted)">illustrative</text></svg>',
+    caps:[
+      'Each new token costs <b>one pass</b> through the model\'s layers: a fixed amount of computation, whatever the token.',
+      'Answer immediately, and the model must commit to <b>27</b> after only a handful of passes, none of which wrote down any working.',
+      'Write the steps first, and every token of working is <b>another pass</b> before the final answer.',
+      'And each intermediate result, like the <b>3</b>, is now written down. Attention (L7) lets later steps read it back: the text works as <b>scratch paper</b>.'
+    ]
+  });
+})();
+/* ===== A5: ReAct trace (verbatim: examples.json react.*; stray spaces removed with approval) ===== */
+(function(){
+  const {esc,fig}=window.__lec;
+  const QUESTION='Question: Aside from the Apple Remote, what other device can control the program Apple Remote was originally designed to interact with?';
+  const T={
+    react:[
+      ['t','Thought 1:','I need to search Apple Remote and find the program it was originally designed to interact with.'],
+      ['a','Act 1:','Search[Apple Remote]'],
+      ['o','Obs 1:','The Apple Remote is a remote control introduced in October 2005 by Apple … originally designed to control the <span class="grounded">Front Row media center</span> program …'],
+      ['t','Thought 2:','Apple Remote was originally designed to control the Front Row media center program. I need to search Front Row next and find what other device can control it.'],
+      ['a','Act 2:','Search[Front Row]'],
+      ['o','Obs 2:',"Could not find [Front Row]. Similar: ['Front Row Seat to Earth', 'Front Row Motorsports',' Front Row (software)', …]"],
+      ['t','Thought 3:','Front Row is not found. I need to search Front Row (software).'],
+      ['a','Act 3:','Search[Front Row (software)]'],
+      ['o','Obs 3:','Front Row is a discontinued media center software …'],
+      ['t','Thought 4:','Front Row (software) is controlled by an Apple Remote or the keyboard function keys. So the answer is keyboard function keys.'],
+      ['a','Act 4:','Finish[<span class="grounded">keyboard function keys</span>]','good']],
+    cot:[
+      ['t','Thought:',"Let's think step by step. <span class=\"madeup\">Apple Remote was originally designed to interact with Apple TV. Apple TV can be controlled by iPhone, iPad, and iPod Touch.</span> So the answer is iPhone, iPad, and iPod Touch."],
+      ['n','Answer:','iPhone, iPad, iPod Touch','bad']]
+  };
+  const CAPS={
+    react:['The question needs <b>two hops</b>: find the program the Apple Remote was designed for, then find what else controls that program.',
+      '<b>Thought</b>: the model plans what it needs to find out.',
+      '<b>Action</b>: it calls the search tool, in the format shown by the examples in its prompt.',
+      '<b>Observation</b>: the search result is pasted into the prompt. The tool wrote this line, not the model. Now it knows: <b>Front Row</b>.',
+      '<b>Thought</b>: it updates its plan with what it just read.',
+      '<b>Action</b>: search for Front Row…',
+      '<b>Observation</b>: …which fails. Only similar page titles come back.',
+      '<b>Thought</b>: it reasons about the failure and picks a better search.',
+      '<b>Action</b>: search for Front Row (software).',
+      '<b>Observation</b>: this time it lands on the right page.',
+      '<b>Thought</b>: it reads the answer off what it found.',
+      '<b>Finish</b>: keyboard function keys <b>✓ right</b>. The answer rests on what the searches returned, not on memory.'],
+    cot:['The question needs <b>two hops</b>: find the program the Apple Remote was designed for, then find what else controls that program.',
+      '<b>Reason only</b>: the model thinks step by step, but entirely from memory. The highlighted fact is <b>made up</b>: the Apple Remote was designed for Front Row.',
+      'So the answer is confidently <b>✗ wrong</b>: careful reasoning, built on a fact the model invented.']
+  };
+  // the loop: Thought -> Action -> tool -> Observation -> Thought
+  const node=(id,x,y,w,label,sub)=>'<g class="node" data-node="'+id+'"><rect x="'+(x-w/2)+'" y="'+(y-30)+'" width="'+w+'" height="60" rx="12"/>'+
+    '<text x="'+x+'" y="'+(y+(sub?-3:6))+'" text-anchor="middle" font-size="19" font-weight="700" fill="var(--fg-strong)">'+label+'</text>'+
+    (sub?'<text x="'+x+'" y="'+(y+19)+'" text-anchor="middle" font-size="15" fill="var(--fg-muted)">'+sub+'</text>':'')+'</g>';
+  const ar=d=>'<path d="'+d+'" fill="none" stroke="var(--fg-faint)" stroke-width="2.2" marker-end="url(#l11ah2)"/>';
+  const loop='<svg class="loop" viewBox="0 0 440 470" role="img" aria-label="The ReAct loop: thought, action, observation">'+
+    '<defs><marker id="l11ah2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1L9 5L1 9z" fill="var(--fg-faint)"/></marker></defs>'+
+    ar('M290,78 C360,90 380,140 360,198')+ar('M340,270 C330,320 300,350 268,370')+ar('M172,370 C140,350 110,320 100,270')+ar('M80,198 C60,140 80,90 150,78')+
+    node('t',220,70,170,'Thought','the model writes')+node('a',345,235,150,'Action','the model writes')+node('o',95,235,170,'Observation','the tool writes')+
+    node('w',220,400,190,'Wikipedia search','the tool')+
+    '<text x="220" y="160" text-anchor="middle" font-size="16" fill="var(--fg-muted)">repeat until</text><text x="220" y="181" text-anchor="middle" font-size="16" fill="var(--fg-muted)">Finish[answer]</text></svg>';
+  function code(chip){
+    let h='<div class="codebox trace"><div class="codebox-title">'+{react:'ReAct (reason + act)',cot:'Reason only (chain-of-thought)'}[chip]+'</div>'+
+      '<div class="cl qline" data-hl="0">'+esc(QUESTION)+'</div>';
+    T[chip].forEach(([k,lab,txt,v],i)=>{
+      h+='<div class="cl" data-show="'+(i+1)+'" data-hl="'+(i+1)+'"><span class="k '+k+'">'+lab+'</span> '+txt+
+        (v?(v==='good'?' <span class="verdict good">✓ right</span>':' <span class="verdict bad">✗ wrong</span>'):'')+'</div>';
+    });
+    return h+'</div>';
+  }
+  let built=null;
+  fig('fx-react',{
+    html:loop, side:'<div class="trace-slot"></div>', gridClass:'react',
+    chips:{label:'Prompting style:',items:[['cot','Reason only'],['react','ReAct']],value:'react',restart:true},
+    count:chip=>T[chip].length+1,
+    dwell:2400,
+    onStep(step,chip,root){
+      if(built!==chip){root.querySelector('.trace-slot').innerHTML=code(chip);built=chip;}
+      const cur=step===0?null:T[chip][step-1][0];
+      const unused={cot:['a','o','w'],react:[]}[chip];
+      root.querySelectorAll('.loop .node').forEach(n=>{
+        const id=n.dataset.node;
+        n.classList.toggle('on',cur===id||(cur==='a'&&id==='w'&&T[chip][step-1][2].startsWith('Search'))||(cur==='o'&&id==='w'));
+        n.classList.toggle('off',unused.includes(id));
+      });
+    },
+    caps:(step,chip)=>CAPS[chip][step]
+  });
+})();
+
+})();
+</script>
+<script>
+/* ===================== Part B (B1–B3) ===================== */
+(function(){
+'use strict';
+const {$$,esc,fig}=window.__lec;
+const f1=v=>(Math.round(v*100)/100).toFixed(2);
+const sig=z=>1/(1+Math.exp(-z));
+const tx=(x,y,t,o)=>{o=o||{};return '<text x="'+x+'" y="'+y+'"'+(o.a?' text-anchor="'+o.a+'"':'')+' font-size="'+(o.fs||16)+'"'+(o.w?' font-weight="'+o.w+'"':'')+' fill="'+(o.fill||'var(--fg)')+'">'+t+'</text>';};
+const ILL=(x,y)=>tx(x,y,'(illustrative)',{a:'end',fs:15,fill:'var(--fg-muted)'});
+const sub=t=>'<tspan baseline-shift="sub" font-size="15">'+t+'</tspan>';
+
+/* ----- "you are here": the A1 stages, small ----- */
+const STAGES=[['pre','Pretraining','--box-ffn'],['sft','Supervised fine-tuning','--box-soft'],['rlhf','Preference tuning (RLHF)','--box-attn'],['rl','RL for reasoning','--box-lin']];
+$$('.yah[data-here]').forEach(el=>{
+  const hi=STAGES.findIndex(s=>s[0]===el.dataset.here);
+  el.setAttribute('role','img'); el.setAttribute('aria-label','Training stages: you are at stage '+(hi+1)+', '+STAGES[hi][1]);
+  el.innerHTML=STAGES.map(([k,t,c],i)=>'<div class="st'+(i===hi?' here':i<hi?' done':'')+'" style="border-top-color:var('+c+')"><small>Stage '+(i+1)+'</small>'+t+'</div>').join('');
+});
+
+/* ===== B1: write vs judge (illustrative; answers verbatim: examples.json hook.*) ===== */
+(function(){
+  const PROMPT='Explain the moon landing to a 6 year old in a few sentences.';
+  const GPT3='Explain the theory of gravity to a 6 year old. Explain the theory of relativity to a 6 year old in a few sentences. …';
+  const INST='People went to the moon, and they took pictures of what they saw, and sent them back to the earth so we could all see them.';
+  const html='<div class="wj">'+
+    '<div><h4>Write (SFT)</h4><div class="codebox io" data-hl="1-2"><div class="codebox-title">A person writes the answer</div>'+
+      '<p class="txt q">'+esc(PROMPT)+'</p>'+
+      '<p class="txt wait">✍ … the whole answer, word by word, as well as they can.</p>'+
+      '<p class="cost" data-show="1">Cost: <b>a full answer</b> per example. The model learns to <b>copy</b> it.</p></div></div>'+
+    '<div><h4>Judge (RLHF)</h4><div class="codebox io" data-hl="3-4"><div class="codebox-title">A person picks the better answer</div>'+
+      '<p class="txt q">'+esc(PROMPT)+'</p>'+
+      '<div class="ab"><div class="jA"><b>Answer A</b>'+esc(GPT3)+'</div><div class="jB"><b>Answer B</b>'+esc(INST)+'</div></div>'+
+      '<p class="cost" data-show="3">Cost: <b>a few seconds</b>, one click. B is better.</p></div></div>'+
+  '</div>';
+  // the ceiling (illustrative)
+  const W=1000,H=190,bx=300,cx=690;
+  let s=tx(bx-16,72,'Learn by copying',{a:'end',fs:18,w:700,fill:'var(--fg-strong)'})+
+        tx(bx-16,142,'Learn from judgments',{a:'end',fs:18,w:700,fill:'var(--fg-strong)'})+
+        '<line x1="'+bx+'" y1="34" x2="'+bx+'" y2="168" stroke="var(--fg-faint)" stroke-width="1.5"/>'+
+        '<line x1="'+cx+'" y1="34" x2="'+cx+'" y2="168" stroke="var(--hl-bar)" stroke-width="3" stroke-dasharray="7 6"/>'+
+        tx(cx,24,'level of the people who write the examples',{a:'middle',fs:16,fill:'var(--fg-mid)'})+
+        '<g data-show="2"><rect x="'+bx+'" y="50" width="'+(cx-6-bx)+'" height="34" rx="6" fill="var(--c-blue)" opacity=".85"/>'+tx(cx-18,73,'can only match the writers',{a:'end',fs:16,w:700,fill:'var(--bg)'})+'</g>'+
+        '<g data-show="4"><rect x="'+bx+'" y="120" width="'+(860-bx)+'" height="34" rx="6" fill="var(--k-score)" opacity=".9"/>'+tx(848,143,'can go past them',{a:'end',fs:16,w:700,fill:'var(--bg)'})+'</g>'+
+        tx(bx+8,108,'answer quality →',{fs:15,fill:'var(--fg-muted)'})+ILL(W-12,H-8);
+  const svg='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Copying caps the model at the writers\' level; judgments can take it further" style="margin-top:16px">'+s+'</svg>';
+  fig('fx-writejudge',{
+    html:html+svg,
+    onStep(step,chip,root){
+      root.querySelector('.jB').classList.toggle('win',step>=3);
+    },
+    caps:[
+      'Two ways a person can teach the model about the same prompt (the one from the moon-landing example).',
+      '<b>Write</b>: a person writes a complete answer, and SFT trains the model to copy it. Every example costs a person\'s full effort.',
+      'A model that copies can, at best, reach the level of the people who wrote the examples. That\'s the <b>ceiling</b>.',
+      '<b>Judge</b>: show a person two answers and ask which is better. Here it\'s easy: A just continues the text, B actually answers. One click.',
+      'A judgment says which direction is <b>better</b>, not exactly what to write. So the model can keep improving past the writers\' level. The results below show this happening.'
+    ]
+  });
+})();
+
+/* ===== B1: Stiennon et al. 2020, Figure 1 (examples.json b1.stiennon.headline) ===== */
+(function(){
+  const W=720,H=410,x0=96,x1=600,y0=40,y1=350;
+  const SZ=[1.3,2.7,6.7,12.9], LBL=['1.3B','2.7B','6.7B','12.9B'];
+  const X=b=>x0+(Math.log(b)-Math.log(1.3))/(Math.log(12.9)-Math.log(1.3))*(x1-x0);
+  const Y=v=>y1-(v-.15)/.6*(y1-y0);
+  const S=[
+    {k:'pt',name:'Pretrain only',col:'var(--c-gray)',v:[.22,.31,.29,.36],lab:[1.3,.175]},
+    {k:'sl',name:'Supervised (copies the references)',col:'var(--c-blue)',v:[.39,.40,.42,.43],lab:[1.3,.355]},
+    {k:'hf',name:'Human feedback',col:'var(--k-score)',v:[.61,null,.70,null],lab:[1.3,.56]}
+  ];
+  let s='';
+  for(let v=.2;v<=.71;v+=.1){const y=Y(v);s+='<line x1="'+x0+'" y1="'+y+'" x2="'+x1+'" y2="'+y+'" stroke="var(--border)"/>'+tx(x0-10,y+5,Math.round(v*100)+'%',{a:'end',fs:16,fill:'var(--fg-muted)'});}
+  SZ.forEach((b,i)=>{s+=tx(X(b),y1+26,LBL[i],{a:'middle',fs:16,fill:'var(--fg)'});});
+  s+=tx((x0+x1)/2,y1+52,'model size',{a:'middle',fs:16,fill:'var(--fg-mid)'});
+  s+=tx(x0-60,22,'Preferred to the human-written summary',{fs:16,fill:'var(--fg-mid)'});
+  s+='<line x1="'+x0+'" y1="'+y1+'" x2="'+x1+'" y2="'+y1+'" stroke="var(--fg-faint)" stroke-width="1.5"/>';
+  s+='<line x1="'+x0+'" y1="'+Y(.5)+'" x2="'+x1+'" y2="'+Y(.5)+'" stroke="var(--fg-strong)" stroke-width="2.2" stroke-dasharray="8 6"/>'+
+     tx(X(1.3)+8,Y(.5)+22,'Human-written summaries',{fs:16,w:700,fill:'var(--fg-strong)'});
+  S.forEach((o,i)=>{
+    const pts=o.v.map((v,j)=>v==null?null:[X(SZ[j]),Y(v)]).filter(Boolean);
+    let g='<path d="M'+pts.map(p=>p.join(',')).join(' L')+'" fill="none" stroke="'+o.col+'" stroke-width="4" stroke-linecap="round"/>';
+    o.v.forEach((v,j)=>{if(v!=null) g+='<circle cx="'+X(SZ[j])+'" cy="'+Y(v)+'" r="5.5" fill="'+o.col+'"><title>'+o.name+', '+LBL[j]+': '+Math.round(v*100)+'%</title></circle>';});
+    g+=tx(X(o.lab[0])+8,Y(o.lab[1]),o.name,{fs:16,w:700,fill:o.col});
+    s+='<g data-show="'+(i+1)+'">'+g+'</g>';
+  });
+  // step 4: the headline pair
+  s+='<g data-show="4">'+
+     '<circle cx="'+X(1.3)+'" cy="'+Y(.61)+'" r="12" fill="none" stroke="var(--hl-bar)" stroke-width="3"/>'+
+     tx(X(1.3)+150,Y(.56),'← 61% at 1.3B',{fs:17,w:700,fill:'var(--fg-strong)'})+
+     '<circle cx="'+X(12.9)+'" cy="'+Y(.43)+'" r="12" fill="none" stroke="var(--hl-bar)" stroke-width="3"/>'+
+     tx(X(12.9)+4,Y(.43)-20,'43% at 12.9B',{a:'end',fs:17,w:700,fill:'var(--fg-strong)'})+'</g>';
+  fig('fx-stiennon',{
+    svg:'<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="How often each model\'s summaries beat the human-written ones, by model size">'+s+'</svg>',
+    caps:[
+      'Reddit posts, summarised. People compare each model\'s summary with the <b>human-written</b> one. The dashed line is a tie: 50%.',
+      '<b>Pretrained only</b>, prompted to summarise: well below the human summaries at every size.',
+      '<b>Supervised</b>: trained to copy the human summaries. Better, and slowly improving with size, but still below 50%. Copying doesn\'t beat the original.',
+      '<b>Human feedback</b>: a reward model learned from people\'s comparisons, then RL. Above the human summaries already at 1.3B.',
+      'The headline: the <b>1.3B</b> feedback model (61%) beats a supervised model <b>10× its size</b> (43%).'
+    ]
+  });
+})();
+
+/* ===== B2: you be the labeler (answers verbatim: examples.json hook.* and b2.pair.cannonball; scores illustrative) ===== */
+(function(){
+  const P=[
+    {prompt:'Explain the moon landing to a 6 year old in a few sentences.',
+     A:{who:'GPT-3',text:['Explain the theory of gravity to a 6 year old.','Explain the theory of relativity to a 6 year old in a few sentences.','Explain the big bang theory to a 6 year old.','Explain evolution to a 6 year old.']},
+     B:{who:'InstructGPT',text:['People went to the moon, and they took pictures of what they saw, and sent them back to the earth so we could all see them.']},
+     r0:[0,0]},
+    {prompt:'What happens if you fire a cannonball directly at a pumpkin at high speeds?',
+     A:{who:'InstructGPT',text:['There is no way to accurately predict what will happen if you fire a cannonball directly at a pumpkin at high speeds, since there are too many unpredictable factors involved. Some of these factors might include the size, weight, and density of the cannonball, the material that the pumpkin is made of, the velocity and impact force of the cannonball, and the distance between the cannonball and the pumpkin at the moment of impact. Some of the more likely possible outcomes include breaking or knocking the pumpkin to the ground, cracking the pumpkin, or completely obliterating it.']},
+     B:{who:'GPT-3',text:['The pumpkin will pull the cannonball in, and the cannonball will bounce off of the pumpkin. A pumpkin is a strong magnet, so strong that it can manipulate metal objects.']},
+     r0:[.4,.1]}
+  ];
+  const TARGET=2.0;            // gap after training on the pair (illustrative)
+  const pairOf=s=>s<2?0:1, trained=s=>s===1||s>=3;
+  function scores(step,chip){
+    const p=P[pairOf(step)], r=p.r0.slice();
+    if(!trained(step)||!chip) return r;
+    const w=chip==='A'?0:1, l=1-w, d=(TARGET-(r[w]-r[l]))/2;
+    r[w]+=d; r[l]-=d; return r;
+  }
+  // score panel
+  const W=460,H=470,zx=240,ux=80;
+  const sx0=60,sx1=430,sy0=232,sy1=404,G=4.5;
+  const GX=g=>sx0+(g+G)/(2*G)*(sx1-sx0), GY=v=>sy1-v*(sy1-sy0);
+  let curve='';for(let g=-G;g<=G+1e-9;g+=.1) curve+=(curve?' L':'M')+GX(g).toFixed(1)+','+GY(sig(g)).toFixed(1);
+  function panel(step,chip){
+    const r=scores(step,chip), r0=P[pairOf(step)].r0;
+    let s=tx(16,26,'Reward model scores',{fs:17,w:700,fill:'var(--fg-strong)'})+ILL(W-12,26);
+    s+='<line x1="'+zx+'" y1="44" x2="'+zx+'" y2="168" stroke="var(--fg-faint)" stroke-width="1.5"/>'+tx(zx,186,'0',{a:'middle',fs:15,fill:'var(--fg-muted)'})+
+       tx(zx-160,186,'−2',{a:'middle',fs:15,fill:'var(--fg-muted)'})+tx(zx+160,186,'+2',{a:'middle',fs:15,fill:'var(--fg-muted)'});
+    ['A','B'].forEach((k,i)=>{
+      const y=58+i*58, v=r[i], x=zx+ux*v, pick=chip===k&&trained(step);
+      s+=tx(30,y+22,k,{fs:20,w:700,fill:pick?'var(--c-green)':'var(--fg-strong)'});
+      s+='<rect x="'+Math.min(zx,x)+'" y="'+y+'" width="'+Math.max(2,Math.abs(x-zx))+'" height="32" rx="5" fill="var(--k-score)"/>';
+      if(trained(step)&&chip) s+='<line x1="'+(zx+ux*r0[i])+'" y1="'+(y-5)+'" x2="'+(zx+ux*r0[i])+'" y2="'+(y+37)+'" stroke="var(--fg-mid)" stroke-width="2" stroke-dasharray="3 3"/>';
+      s+=tx(v>=0?Math.max(x,zx)+8:Math.min(x,zx)-8,y+23,(v>=0?'+':'−')+f1(Math.abs(v)),{a:v>=0?'start':'end',fs:17,w:700,fill:'var(--k-score)'});
+    });
+    // sigma curve
+    const w=chip==='B'?1:0, gap=chip?r[w]-r[1-w]:r[0]-r[1];
+    s+='<line x1="'+sx0+'" y1="'+sy1+'" x2="'+sx1+'" y2="'+sy1+'" stroke="var(--fg-faint)" stroke-width="1.5"/>'+
+       '<line x1="'+GX(0)+'" y1="'+sy0+'" x2="'+GX(0)+'" y2="'+sy1+'" stroke="var(--border)"/>'+
+       '<line x1="'+sx0+'" y1="'+GY(1)+'" x2="'+sx1+'" y2="'+GY(1)+'" stroke="var(--border)" stroke-dasharray="4 4"/>'+
+       '<line x1="'+sx0+'" y1="'+GY(.5)+'" x2="'+sx1+'" y2="'+GY(.5)+'" stroke="var(--border)" stroke-dasharray="4 4"/>'+
+       tx(sx0-8,GY(1)+5,'1',{a:'end',fs:15,fill:'var(--fg-muted)'})+tx(sx0-8,GY(.5)+5,'0.5',{a:'end',fs:15,fill:'var(--fg-muted)'})+tx(sx0-8,sy1+5,'0',{a:'end',fs:15,fill:'var(--fg-muted)'})+
+       tx(16,sy0-12,'σ(gap): chance the reward model agrees with you',{fs:16,fill:'var(--fg-mid)'})+
+       '<path d="'+curve+'" fill="none" stroke="var(--fg-mid)" stroke-width="2.5"/>'+
+       tx(GX(0),sy1+22,'0',{a:'middle',fs:15,fill:'var(--fg-muted)'})+
+       tx((sx0+sx1)/2,sy1+48,chip?'gap = score(your pick) − score(other)':'gap = score(A) − score(B)',{a:'middle',fs:16,fill:'var(--fg-mid)'})+
+       '<circle cx="'+GX(gap)+'" cy="'+GY(sig(gap))+'" r="9" fill="var(--k-score)" stroke="var(--surface)" stroke-width="2"/>';
+    return '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Scores for answers A and B, and the sigmoid of their gap">'+s+'</svg>'+
+      '<div class="readout"><span>gap <b>'+(gap<0?'−':'')+f1(Math.abs(gap))+'</b></span><span>σ(gap) <b>'+f1(sig(gap))+'</b></span><span>loss −log σ <b>'+f1(-Math.log(sig(gap)))+'</b></span></div>';
+  }
+  function left(step,chip){
+    const p=P[pairOf(step)], t=trained(step)&&chip;
+    const box=k=>'<div class="codebox io'+(t?(chip===k?' win':' lose'):'')+'"><div class="codebox-title">Answer '+k+
+      (t?'<span class="pill who">written by '+p[k].who+'</span>':'')+(t&&chip===k?'<span class="verdict good">✓ your pick</span>':'')+'</div>'+
+      p[k].text.map(x=>'<p class="txt">'+esc(x)+'</p>').join('')+'</div>';
+    return '<div class="codebox io"><div class="codebox-title">Prompt '+(pairOf(step)+1)+' of 2</div><p class="txt q">'+esc(p.prompt)+'</p></div>'+
+      '<div class="lab-ans">'+box('A')+box('B')+'</div>';
+  }
+  fig('fx-labeler',{
+    html:'<div class="lab lab-left"></div>', side:'<div class="lab-side"></div>', gridClass:'lab',
+    chips:{label:'I prefer:',items:[['A','Answer A'],['B','Answer B']],value:null},
+    count:5,
+    onStep(step,chip,root){
+      root.querySelector('.lab-left').innerHTML=left(step,chip);
+      root.querySelector('.lab-side').innerHTML=panel(step,chip);
+    },
+    caps(step,chip){
+      const nopick='Pick the answer you prefer with the chips above (<b>Answer A</b> or <b>Answer B</b>), then press Next.';
+      if(step===0) return 'Read both answers. Before training, the reward model gives them the <b>same score</b>, so σ(gap) = 0.5: no preference yet. '+nopick;
+      if(step===1) return chip?'Train on your pick: the reward model raises the score of '+chip+' and lowers the other, so the gap grows and σ(gap) moves towards 1. The loss drops from 0.69 to '+f1(-Math.log(sig(TARGET)))+'.':'No pick yet, so there is nothing to learn. '+nopick;
+      if(step===2) return 'A new prompt. The reward model already has a guess here (A slightly ahead), learned from earlier pairs. '+(chip?'Your pick is still '+chip+'. Change it if you prefer the other answer.':nopick);
+      if(step===3) return chip?(chip==='A'?'You picked the long, hedging answer: it says nothing definite, but nothing false either.':'You picked the short, confident answer, which is <b>wrong</b>: pumpkins aren\'t magnets.')+' The reward model learns <b>your</b> preference either way. It has no other idea of what "good" means.':'No pick yet. '+nopick;
+      return 'After many thousands of pairs like these, the reward model can <b>score any answer</b>, including ones no person has ever seen. That score is what the next step trains against.';
+    }
+  });
+})();
+
+/* ===== B3: the RL loop ===== */
+(function(){
+  const W=1000,H=400;
+  const node=(id,cx,cy,w,label,subl,cls,hl)=>'<g class="node '+(cls||'')+'" data-grp="'+id+'" data-hl="'+hl+'"><rect x="'+(cx-w/2)+'" y="'+(cy-34)+'" width="'+w+'" height="68" rx="12"/>'+
+    '<text x="'+cx+'" y="'+(cy-6)+'" text-anchor="middle" font-size="19" font-weight="700" fill="'+(cls==='score'?'var(--k-score)':cls==='leash'?'var(--k-leash)':'var(--fg-strong)')+'">'+label+'</text>'+
+    '<text x="'+cx+'" y="'+(cy+19)+'" text-anchor="middle" font-size="16" fill="var(--fg-mid)">'+subl+'</text></g>';
+  const ar=(id,d,col)=>'<path data-grp="'+id+'" d="'+d+'" fill="none" stroke="'+(col||'var(--fg-faint)')+'" stroke-width="2.5" marker-end="url(#bah)"/>';
+  const s='<defs><marker id="bah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1L9 5L1 9z" fill="var(--fg-faint)"/></marker></defs>'+
+    ar('pm','M202,110 L258,110')+ar('m-rm','M476,92 C510,62 520,58 538,58')+ar('m-ref','M476,128 C510,158 520,192 538,192')+
+    ar('rm-tot','M782,58 C805,58 812,80 818,96')+ar('ref-tot','M782,192 C805,192 812,168 818,152')+
+    ar('tot-up','M900,160 C900,290 820,330 718,330')+ar('up-m','M402,330 C350,330 360,210 362,148')+
+    node('p',112,110,176,'Prompt x','from a big list','',1)+
+    node('m',368,110,212,'Model π'+sub('θ'),'writes its own answer y','', '2 6')+
+    node('rm',660,58,240,'Reward model r'+sub('φ'),'score: how good is y?','score',3)+
+    node('ref',660,192,240,'Reference model π'+sub('ref'),'KL: how far from SFT?','leash',4)+
+    node('tot',900,124,170,'Total','score − β × KL','',5)+
+    node('up',560,330,316,'Update the weights θ','more of what got a high total','',6)+
+    tx(300,236,'repeat',{a:'middle',fs:16,fill:'var(--fg-muted)'})+tx(300,256,'many thousands',{a:'middle',fs:16,fill:'var(--fg-muted)'})+tx(300,276,'of times',{a:'middle',fs:16,fill:'var(--fg-muted)'});
+  fig('fx-loop',{
+    svg:'<svg class="bloop" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="The RLHF loop: prompt, model writes an answer, reward model scores it, reference model measures the KL divergence, update the weights">'+s+'</svg>',
+    groups:[['*'],['p'],['p','pm','m'],['m','m-rm','rm'],['m','m-ref','ref'],['rm','ref','rm-tot','ref-tot','tot'],['tot','tot-up','up','up-m','m']],
+    caps:[
+      'One round of the loop that trains the model against the reward model. Step through it.',
+      'Take a <b>prompt</b> x from a big list. InstructGPT ran this stage on about 31k prompts.',
+      'The model writes its <b>own answer</b> y. No person writes or reads anything in this loop.',
+      'The reward model from B2 gives the answer a <span class="k-score"><b>score</b></span>: how much would a labeler like it?',
+      'The <span class="k-leash"><b>reference model</b></span> (the SFT model, with its weights fixed) measures the <span class="k-leash"><b>KL divergence</b></span>: how much more likely the trained model is to write y than the reference model is. Why this matters comes next.',
+      'Combine the two into one number, the total: the <span class="k-score"><b>score</b></span> minus β × the <span class="k-leash"><b>KL divergence</b></span>.',
+      'Nudge the weights θ so answers with a high total become <b>more likely</b>, and those with a low total less likely. Then take the next prompt, and go round again.'
+    ]
+  });
+})();
+
+/* ===== B3: the KL coefficient β (illustrative; curve shapes follow Gao et al. 2022) ===== */
+(function(){
+  const BETA={none:['0 (no KL penalty)',5.2,false],small:['small',3.4,true],medium:['medium',2.4,true],large:['large',1.0,true]};
+  const T=10, NS=6;
+  const kl=(b,t)=>{const [,Dm,sat]=BETA[b]; return sat?Dm*(1-Math.exp(-t/3))/(1-Math.exp(-T/3)):Dm*t/T;};
+  const proxy=d=>d, truth=d=>d-.2*d*d;     // toy: true quality peaks at KL 2.5
+  const W=1000,H=420,x0=90,x1=720,y0=40,y1=350, YMIN=-.5,YMAX=5.5;
+  const X=t=>x0+t/T*(x1-x0), Y=v=>y1-(v-YMIN)/(YMAX-YMIN)*(y1-y0);
+  function svg(step,b){
+    const tEnd=step/(NS-1)*T;
+    let s='';
+    for(let v=0;v<=5;v++){const y=Y(v);s+='<line x1="'+x0+'" y1="'+y+'" x2="'+x1+'" y2="'+y+'" stroke="var(--border)"/>'+tx(x0-10,y+5,v,{a:'end',fs:16,fill:'var(--fg-muted)'});}
+    s+='<line x1="'+x0+'" y1="'+Y(0)+'" x2="'+x1+'" y2="'+Y(0)+'" stroke="var(--fg-faint)" stroke-width="1.5"/>'+
+       tx(x1,y1+30,'training steps →',{a:'end',fs:16,fill:'var(--fg-mid)'})+tx(x0,y1+30,'start (SFT model)',{fs:16,fill:'var(--fg-mid)'})+
+       tx(x0-70,24,'score',{fs:16,fill:'var(--fg-mid)'})+ILL(W-12,H-10);
+    // best possible true quality (toy): 1.25
+    s+='<line x1="'+x0+'" y1="'+Y(1.25)+'" x2="'+x1+'" y2="'+Y(1.25)+'" stroke="var(--c-green)" stroke-width="1.5" stroke-dasharray="3 5"/>'+tx(x1-4,Y(1.25)-8,'best true quality',{a:'end',fs:15,fill:'var(--c-green)'});
+    if(tEnd>0){
+      let pp='',tp='';
+      for(let t=0;t<=tEnd+1e-9;t+=.1){const d=kl(b,t);pp+=(pp?' L':'M')+X(t).toFixed(1)+','+Y(proxy(d)).toFixed(1);tp+=(tp?' L':'M')+X(t).toFixed(1)+','+Y(truth(d)).toFixed(1);}
+      const d=kl(b,tEnd);
+      s+='<path d="'+pp+'" fill="none" stroke="var(--k-score)" stroke-width="4" stroke-dasharray="9 7"/>'+
+         '<path d="'+tp+'" fill="none" stroke="var(--c-blue)" stroke-width="4"/>'+
+         '<circle cx="'+X(tEnd)+'" cy="'+Y(proxy(d))+'" r="6" fill="var(--k-score)"/><circle cx="'+X(tEnd)+'" cy="'+Y(truth(d))+'" r="6" fill="var(--c-blue)"/>';
+    }
+    const lx=748;
+    s+='<line x1="'+lx+'" y1="70" x2="'+(lx+40)+'" y2="70" stroke="var(--k-score)" stroke-width="4" stroke-dasharray="9 7"/>'+tx(lx+50,75,'reward model\'s score',{fs:16,w:700,fill:'var(--k-score)'})+
+       '<line x1="'+lx+'" y1="110" x2="'+(lx+40)+'" y2="110" stroke="var(--c-blue)" stroke-width="4"/>'+tx(lx+50,115,'true quality',{fs:16,w:700,fill:'var(--c-blue)'})+
+       tx(lx,170,'β: '+BETA[b][0],{fs:17,w:700,fill:'var(--k-leash)'});
+    return '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Score and true quality during training, for one value of the KL coefficient β">'+s+'</svg>';
+  }
+  fig('fx-leash',{
+    html:'<div class="lsh"></div>',
+    chips:{label:'KL coefficient β:',items:[['none','none (β = 0)'],['small','small β'],['medium','medium β'],['large','large β']],value:'none'},
+    count:NS,
+    onStep(step,b,root){
+      const t=step/(NS-1)*T, d=kl(b,t);
+      root.querySelector('.lsh').innerHTML=svg(step,b)+
+        '<div class="readout"><span>KL divergence from the reference model <b class="k-leash">'+f1(d)+'</b></span><span>reward model\'s score <b class="k-score">'+f1(proxy(d))+'</b></span><span>true quality <b>'+(truth(d)<0?'−':'')+f1(Math.abs(truth(d)))+'</b></span></div>';
+    },
+    caps(step,b){
+      if(step===0) return 'Training starts at the SFT model: KL divergence 0, both scores at 0. Pick a KL coefficient β with the chips, then step through training.';
+      if(step<NS-1) return 'Training… The KL divergence from the reference model grows, and the reward model\'s score goes up. Watch the <b>true quality</b> line.';
+      return {
+        none:'<b>No KL penalty (β = 0)</b>: nothing holds the model near the reference model, so it moves as far as the score pulls it. The score keeps rising, but true quality peaks and then drops <b>below where it started</b>. Reward hacking.',
+        small:'<b>Small β</b>: a smaller KL divergence, but still too large. True quality overshoots its peak and slides back.',
+        medium:'<b>Medium β</b>: the model stops near the KL divergence where true quality is highest. The best of the four.',
+        large:'<b>Large β</b>: β is so large that the model barely moves. Safe, but it hardly improves.'
+      }[b];
+    }
+  });
+})();
+
+/* ===== B4: the clipped step (redrawn from the formula: PPO Eq. 7 / Figure 1; numbers illustrative) ===== */
+(function(){
+  const CASE={pos:{r:1.4,V:0.6,path:[1,1.1,1.2,1.35]},neg:{r:0.3,V:0.9,path:[1,0.9,0.8,0.65]}};
+  const EPS=.2, L=(rho,A)=>Math.min(rho*A,Math.max(1-EPS,Math.min(1+EPS,rho))*A);
+  const W=1000,H=420;
+  // left: score vs the critic's guess
+  const lx0=60,lx1=390,ly0=60,ly1=330, LY=v=>ly1-v/1.6*(ly1-ly0);
+  // right: gain against rho
+  const gx0=440,gx1=960,gy0=40,gy1=340, RMIN=.5,RMAX=1.5,GMIN=-1,GMAX=1.3;
+  const GX=r=>gx0+(r-RMIN)/(RMAX-RMIN)*(gx1-gx0), GY=g=>gy1-(g-GMIN)/(GMAX-GMIN)*(gy1-gy0);
+  function svg(step,c){
+    const o=CASE[c], A=o.r-o.V;
+    let s=ILL(W-12,H-8);
+    // ---- left panel
+    s+=tx(lx0-40,30,'One answer y, scored',{fs:17,w:700,fill:'var(--fg-strong)'});
+    s+='<line x1="'+lx0+'" y1="'+ly1+'" x2="'+lx1+'" y2="'+ly1+'" stroke="var(--fg-faint)" stroke-width="1.5"/>';
+    s+='<rect x="'+(lx0+30)+'" y="'+LY(o.r)+'" width="90" height="'+(ly1-LY(o.r))+'" rx="6" fill="var(--k-score)"/>'+
+       tx(lx0+75,ly1+24,'total',{a:'middle',fs:16,w:700,fill:'var(--k-score)'})+tx(lx0+75,LY(o.r)-10,o.r.toFixed(1),{a:'middle',fs:17,w:700,fill:'var(--k-score)'});
+    s+='<g data-show="1"><line x1="'+(lx0+10)+'" y1="'+LY(o.V)+'" x2="'+(lx1-10)+'" y2="'+LY(o.V)+'" stroke="var(--k-critic)" stroke-width="3.5" stroke-dasharray="10 6"/>'+
+       tx(lx1-10,LY(o.V)+(A>0?24:-12),'critic\'s guess V = '+o.V.toFixed(1),{a:'end',fs:16,w:700,fill:'var(--k-critic)'})+'</g>';
+    const ax=lx0+175, top=LY(Math.max(o.r,o.V)), bot=LY(Math.min(o.r,o.V));
+    s+='<g data-show="2"><line x1="'+ax+'" y1="'+(A>0?bot:top)+'" x2="'+ax+'" y2="'+(A>0?top+8:bot-8)+'" stroke="var(--fg-strong)" stroke-width="3" marker-end="url(#cah)"/>'+
+       tx(ax+12,(top+bot)/2+6,'A = '+(A>0?'+':'−')+Math.abs(A).toFixed(1),{fs:18,w:700,fill:'var(--fg-strong)'})+'</g>';
+    // ---- right panel
+    s+=tx(gx0-30,24,'gain for this answer, as ρ moves',{fs:16,fill:'var(--fg-mid)'});
+    s+='<rect data-show="3" x="'+GX(.8)+'" y="'+gy0+'" width="'+(GX(1.2)-GX(.8))+'" height="'+(gy1-gy0)+'" fill="var(--hl-bg)"/>';
+    for(const r of [.6,.8,1,1.2,1.4]) s+='<line x1="'+GX(r)+'" y1="'+gy0+'" x2="'+GX(r)+'" y2="'+gy1+'" stroke="var(--border)"/>'+tx(GX(r),gy1+22,r.toFixed(1),{a:'middle',fs:16,fill:(r===.8||r===1.2)?'var(--fg-strong)':'var(--fg-muted)',w:(r===.8||r===1.2)?700:400});
+    s+='<line x1="'+gx0+'" y1="'+GY(0)+'" x2="'+gx1+'" y2="'+GY(0)+'" stroke="var(--fg-faint)" stroke-width="1.5"/>'+tx(gx0-8,GY(0)+5,'0',{a:'end',fs:15,fill:'var(--fg-muted)'});
+    s+=tx((gx0+gx1)/2,gy1+46,'ρ: how much more likely y is than before this update',{a:'middle',fs:16,fill:'var(--fg-mid)'});
+    let raw='',clip='';
+    for(let r=RMIN;r<=RMAX+1e-9;r+=.01){raw+=(raw?' L':'M')+GX(r).toFixed(1)+','+GY(r*A).toFixed(1);clip+=(clip?' L':'M')+GX(r).toFixed(1)+','+GY(L(r,A)).toFixed(1);}
+    s+='<g data-show="3"><path d="'+raw+'" fill="none" stroke="var(--fg-faint)" stroke-width="2.5" stroke-dasharray="6 6"/>'+
+       '<path d="'+clip+'" fill="none" stroke="var(--fg-strong)" stroke-width="4"/>'+
+       (A>0?tx(gx1-4,GY(RMAX*A)-10,'without clipping',{a:'end',fs:15,fill:'var(--fg-muted)'}):tx(gx0+4,GY(RMIN*A)-14,'without clipping',{fs:15,fill:'var(--fg-muted)'}))+'</g>';
+    if(step>=3){
+      const rho=o.path[Math.min(step-3,3)];
+      s+='<circle cx="'+GX(rho)+'" cy="'+GY(L(rho,A))+'" r="9" fill="var(--hl-bar)" stroke="var(--fg-strong)" stroke-width="2"/>';
+    }
+    return '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="The total versus the critic\'s guess, and the clipped gain as the ratio rho moves">'+
+      '<defs><marker id="cah" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M1 1L9 5L1 9z" fill="var(--fg-strong)"/></marker></defs>'+s+'</svg>';
+  }
+  fig('fx-clip',{
+    html:'<div class="clipfig"></div>',
+    chips:{label:'This answer was:',items:[['pos','better than expected'],['neg','worse than expected']],value:'pos',restart:true},
+    count:7,
+    onStep(step,c,root){
+      const o=CASE[c], A=o.r-o.V;
+      root.querySelector('.clipfig').innerHTML=svg(step,c)+
+        (step>=3?'<div class="readout"><span>ρ <b>'+o.path[step-3].toFixed(2)+'</b></span><span>A <b>'+(A>0?'+':'−')+Math.abs(A).toFixed(1)+'</b></span><span>gain <b>'+(L(o.path[step-3],A)<0?'−':'')+Math.abs(L(o.path[step-3],A)).toFixed(2)+'</b></span></div>':'');
+    },
+    caps(step,c){
+      const pos=c==='pos';
+      return [
+        'The model wrote an answer and got its total from B3: the reward model\'s <span class="k-score"><b>score</b></span> minus the KL penalty.',
+        'The <span class="k-critic"><b>critic</b></span> had guessed the total an answer to this prompt usually gets.',
+        pos?'The total beat the guess: <b>advantage A = total − guess = +0.8</b>. This answer was better than expected, so training should make it more likely.'
+           :'The total fell short of the guess: <b>advantage A = total − guess = −0.6</b>. Worse than expected, so training should make this answer less likely.',
+        'Right: the gain from this answer as the model changes. ρ = 1 means this answer is exactly as likely as before the update. The shaded band is 0.8–1.2.',
+        pos?'The update makes the answer 10% more likely (ρ = 1.1). The gain rises.':'The update makes the answer 10% less likely (ρ = 0.9). The gain rises (it gets less negative).',
+        pos?'ρ reaches 1.2, the edge of the band.':'ρ reaches 0.8, the edge of the band.',
+        pos?'Push further (ρ = 1.35) and the gain stays flat: <b>clipping removes any gain from moving ρ past 1.2</b>, so nothing pulls the model further from one answer. The dashed line shows what would happen without clipping.'
+           :'Push further (ρ = 0.65) and the gain stays flat: <b>clipping removes any gain from moving ρ past 0.8</b>. The model has no reason to overreact to one bad answer.'
+      ][step];
+    }
+  });
+})();
+
+/* ===== B5: RLHF pipeline vs DPO ===== */
+(function(){
+  const W=1000,H=400, Y1=96, Y2=236, BH=70;
+  const box=(id,cx,cy,w,label,subl,cls,show)=>'<g class="box '+(cls||'')+'" data-b="'+id+'"'+(show!=null?' data-show="'+show+'"':'')+'><rect x="'+(cx-w/2)+'" y="'+(cy-BH/2)+'" width="'+w+'" height="'+BH+'" rx="12"/>'+
+    '<text x="'+cx+'" y="'+(cy-6)+'" text-anchor="middle" font-size="18" font-weight="700" fill="'+(cls&&cls.includes('score')?'var(--k-score)':'var(--fg-strong)')+'">'+label+'</text>'+
+    '<text x="'+cx+'" y="'+(cy+19)+'" text-anchor="middle" font-size="15" fill="var(--fg-mid)">'+subl+'</text></g>';
+  const ar=(d,show,col)=>'<path d="'+d+'"'+(show!=null?' data-show="'+show+'"':'')+' fill="none" stroke="'+(col||'var(--fg-faint)')+'" stroke-width="2.5" marker-end="url(#pah)"/>';
+  const s='<defs><marker id="pah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1L9 5L1 9z" fill="var(--fg-faint)"/></marker></defs>'+
+    tx(20,30,'RLHF with PPO',{fs:17,w:700,fill:'var(--fg-strong)'})+
+    box('p1',115,Y1,190,'Preference pairs','labelled by people')+ar('M212,'+Y1+' L248,'+Y1)+
+    box('rm1',355,Y1,206,'Train reward model','learns to score (B2)','score')+ar('M460,'+Y1+' L496,'+Y1)+
+    box('loop1',618,Y1,240,'The loop (PPO)','write · score · critic · update')+ar('M740,'+Y1+' L776,'+Y1)+
+    box('f1',880,Y1,200,'Final model','e.g. InstructGPT')+
+    '<g data-show="1">'+tx(20,Y2-62,'DPO',{fs:17,w:700,fill:'var(--fg-strong)'})+
+    box('p2',115,Y2,190,'Same pairs','labelled by people')+
+    ar('M115,'+(Y2+BH/2+2)+' C115,330 150,336 210,336 L790,336 C850,336 880,330 880,'+(Y2+BH/2+6))+
+    tx(500,326,'train the model directly on the pairs (the DPO loss)',{a:'middle',fs:16,w:700,fill:'var(--fg-strong)'})+
+    tx(500,366,'needs only the model and the reference model',{a:'middle',fs:15,fill:'var(--k-leash)'})+
+    box('f2',880,Y2,200,'Final model','in one stage')+'</g>'+
+    box('rm2',355,Y2,206,'Reward model','✗ not needed','off',2)+
+    box('loop2',618,Y2,240,'The loop','✗ no new answers, no critic','off',2);
+  fig('fx-pipe',{
+    svg:'<svg class="pipe" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="RLHF with PPO has three stages after the preference pairs; DPO trains directly on the pairs">'+s+'</svg>',
+    onStep(step,chip,root){
+      root.querySelectorAll('.box').forEach(b=>b.classList.toggle('on',(step===3&&b.dataset.b==='loop1')||(step===1&&b.dataset.b==='p2')));
+    },
+    caps:[
+      'RLHF with PPO, after SFT: people label pairs, a <span class="k-score"><b>reward model</b></span> learns from them, then the PPO loop trains the model against it.',
+      'DPO starts from the <b>same</b> preference pairs, and trains the model on them directly, with the loss above.',
+      'Gone: the reward model, the loop that writes and scores new answers, and the critic. Four models in memory become two.',
+      'What that costs: the loop was the only place the model tried <b>new answers</b> and got feedback on them. DPO only ever sees the answers already in the pairs.'
+    ]
+  });
+})();
+/* ===== B6: group-relative advantage (illustrative; question from examples.json cot.standard.input) ===== */
+(function(){
+  const Q='Roger has 5 tennis balls. He buys 2 more cans of tennis balls. Each can has 3 tennis balls. How many tennis balls does he have now?';
+  const R={mixed:[1,0,0,1,0,0,1,0],wrong:[0,0,0,0,0,0,0,0],right:[1,1,1,1,1,1,1,1]};
+  const stats=r=>{const m=r.reduce((a,b)=>a+b,0)/r.length, sd=Math.sqrt(r.reduce((a,b)=>a+(b-m)*(b-m),0)/r.length);return {m,sd,A:r.map(v=>sd?(v-m)/sd:0)};};
+  const W=1000,H=490, cx0=170, dx=106, cw=88;
+  const CX=i=>cx0+i*dx;
+  const ry1=250, rh=80, RY=v=>ry1-v*rh;            // score band
+  const az=385, ah=50, AY=a=>az-a*ah;               // advantage band
+  function svg(step,c){
+    const r=R[c], {m,A}=stats(r);
+    let s=ILL(W-12,H-8)+tx(16,54,'8 answers',{fs:16,w:700,fill:'var(--fg-strong)'});
+    for(let i=0;i<8;i++){
+      const x=CX(i)-cw/2, ok=r[i]===1;
+      s+='<rect x="'+x+'" y="20" width="'+cw+'" height="56" rx="9" fill="var(--surface)" stroke="'+(step>=1?(ok?'var(--c-green)':'var(--c-red)'):'var(--fg-faint)')+'" stroke-width="2"/>'+
+         tx(CX(i),42,'Answer '+(i+1),{a:'middle',fs:15,fill:'var(--fg-mid)'})+
+         (step>=1?tx(CX(i),66,ok?'✓ right':'✗ wrong',{a:'middle',fs:16,w:700,fill:ok?'var(--c-green)':'var(--c-red)'}):tx(CX(i),66,'…',{a:'middle',fs:16,fill:'var(--fg-faint)'}));
+    }
+    if(step>=1){
+      s+=tx(16,RY(1)-14,'score r',{fs:16,w:700,fill:'var(--k-score)'})+
+         '<line x1="'+(cx0-55)+'" y1="'+ry1+'" x2="'+(CX(7)+55)+'" y2="'+ry1+'" stroke="var(--fg-faint)" stroke-width="1.5"/>';
+      for(let i=0;i<8;i++) s+=r[i]?'<rect x="'+(CX(i)-22)+'" y="'+RY(1)+'" width="44" height="'+rh+'" rx="5" fill="var(--k-score)"/>':tx(CX(i),ry1+20,'0',{a:'middle',fs:15,fill:'var(--fg-muted)'});
+    }
+    if(step>=2){
+      s+='<line x1="'+(cx0-55)+'" y1="'+RY(m)+'" x2="'+(CX(7)+55)+'" y2="'+RY(m)+'" stroke="var(--fg-strong)" stroke-width="3" stroke-dasharray="10 6"/>'+
+         tx(CX(7)+55,RY(m)-9,'average '+m.toFixed(2),{a:'end',fs:16,w:700,fill:'var(--fg-strong)'});
+    }
+    if(step>=3){
+      s+=tx(16,az-ah*1.3-30,'advantage A',{fs:16,w:700,fill:'var(--fg-strong)'})+
+         '<line x1="'+(cx0-55)+'" y1="'+az+'" x2="'+(CX(7)+55)+'" y2="'+az+'" stroke="var(--fg-faint)" stroke-width="1.5"/>';
+      for(let i=0;i<8;i++){
+        const a=A[i], y=AY(a);
+        if(Math.abs(a)>1e-9) s+='<rect x="'+(CX(i)-22)+'" y="'+Math.min(y,az)+'" width="44" height="'+Math.abs(y-az)+'" rx="5" fill="'+(a>0?'var(--c-green)':'var(--c-red)')+'"/>';
+        s+=tx(CX(i),a>0?y-8:(a<0?y+20:az-8),(a>0?'+':a<0?'−':'')+Math.abs(a).toFixed(2),{a:'middle',fs:15,w:700,fill:'var(--fg-strong)'});
+        if(step>=4&&Math.abs(a)>1e-9) s+=tx(CX(i),a>0?az+24:az-12,a>0?'▲ more likely':'▼ less',{a:'middle',fs:14,fill:a>0?'var(--c-green)':'var(--c-red)'});
+      }
+      if(step>=4&&A.every(a=>a===0)) s+=tx((cx0+CX(7))/2,az+34,'every A is 0: nothing to learn from this question',{a:'middle',fs:17,w:700,fill:'var(--fg-strong)'});
+    }
+    return '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Eight answers, their rule-based rewards, the group average and each answer\'s advantage">'+s+'</svg>';
+  }
+  fig('fx-curve',{
+    html:'<div class="codebox io"><div class="codebox-title">Question <span class="pill">correct answer: 11</span></div><p class="txt q">'+esc(Q)+'</p></div><div class="curve" style="margin-top:12px"></div>',
+    chips:{label:'The group:',items:[['mixed','3 of 8 right'],['wrong','all wrong'],['right','all right']],value:'mixed'},
+    count:5,
+    onStep(step,c,root){ root.querySelector('.curve').innerHTML=svg(step,c); },
+    caps(step,c){
+      const {m,A}=stats(R[c]);
+      const same=c!=='mixed';
+      return [
+        'One maths question (from A4). The model writes <b>8 answers</b> to it, each with its own working.',
+        'A <b>rule-based reward</b> compares each final answer with the correct one, 11: score 1 if right, 0 if wrong. No reward model needed.',
+        'The group\'s <b>average</b> score is '+m.toFixed(2)+'. PPO\'s critic had to learn this number; here the group gives it directly.',
+        same?'Every answer scored exactly the average, so every <b>advantage is 0</b>. Nobody beat the group.'
+            :'Advantage = (score − average) ÷ spread. Right answers get <b>+'+A[0].toFixed(2)+'</b>, wrong ones <b>−'+Math.abs(A[1]).toFixed(2)+'</b>. Right answers are rare here, so each one gets a bigger push.',
+        same?'So the model learns <b>nothing</b> from this question: '+(c==='wrong'?'too hard for now, there is no better answer to copy':'already solved, there is nothing to improve')+'. GRPO learns from questions the model sometimes gets right.'
+            :'Training (with B4\'s clipped steps) makes the right answers, and the working that led to them, <b>more likely</b>, and the wrong ones less likely. Then on to the next question.'
+      ][step];
+    }
+  });
+})();
+
+/* ===== B6: DeepSeek-R1-Zero, Figure 1 (examples.json b6.r1zero.fig1) ===== */
+(function(){
+  const ACC=[[200,.156],[400,.225],[600,.245],[800,.29],[1000,.315],[1200,.37],[1400,.41],[1600,.375],[2000,.38],[2400,.485],[2800,.53],[3200,.51],[3600,.585],[4000,.60],[4200,.60],[4400,.56],[4600,.58],[4800,.57],[5000,.54],[5200,.63],[5400,.575],[5600,.59],[5800,.615],[6000,.645],[6200,.625],[6400,.69],[6800,.665],[7000,.685],[7200,.655],[7400,.675],[7600,.67],[7800,.67],[8000,.69],[8200,.68],[8400,.71],[8600,.74],[8800,.745],[9000,.735],[9200,.775],[9400,.765],[9600,.765],[9800,.755],[10000,.779]];
+  const LEN=[[0,600],[500,750],[1000,1300],[1500,1500],[2000,2000],[2500,2400],[3000,3000],[3500,3600],[4000,4500],[4500,4800],[5000,5500],[5500,5300],[6000,5800],[6500,6500],[7000,7500],[7500,8000],[8000,9000],[8200,11500],[8500,11500],[9000,12500],[9500,13000],[10000,13500]];
+  const W=1000,H=400, P=[{x0:80,x1:470},{x0:590,x1:980}], y0=50,y1=320;
+  const X=(p,st)=>P[p].x0+st/10000*(P[p].x1-P[p].x0);
+  const YA=v=>y1-(v-.1)/.8*(y1-y0), YL=v=>y1-v/15000*(y1-y0);
+  const line=(pts,p,Y,col)=>'<path d="M'+pts.map(([a,b])=>X(p,a).toFixed(1)+','+Y(b).toFixed(1)).join(' L')+'" fill="none" stroke="'+col+'" stroke-width="3.5" stroke-linejoin="round"/>';
+  let s='';
+  // left: accuracy
+  for(const v of [.2,.4,.6,.8]) s+='<line x1="'+P[0].x0+'" y1="'+YA(v)+'" x2="'+P[0].x1+'" y2="'+YA(v)+'" stroke="var(--border)"/>'+tx(P[0].x0-8,YA(v)+5,Math.round(v*100)+'%',{a:'end',fs:15,fill:'var(--fg-muted)'});
+  // right: length
+  for(const v of [0,5000,10000,15000]) s+='<line x1="'+P[1].x0+'" y1="'+YL(v)+'" x2="'+P[1].x1+'" y2="'+YL(v)+'" stroke="var(--border)"/>'+tx(P[1].x0-8,YL(v)+5,v?(v/1000)+'k':'0',{a:'end',fs:15,fill:'var(--fg-muted)'});
+  [0,1].forEach(p=>{
+    s+='<line x1="'+P[p].x0+'" y1="'+y1+'" x2="'+P[p].x1+'" y2="'+y1+'" stroke="var(--fg-faint)" stroke-width="1.5"/>';
+    for(const st of [0,2000,4000,6000,8000,10000]) s+=tx(X(p,st),y1+22,st?(st/1000)+'k':'0',{a:'middle',fs:15,fill:'var(--fg-muted)'});
+    s+=tx((P[p].x0+P[p].x1)/2,y1+48,'RL training steps',{a:'middle',fs:16,fill:'var(--fg-mid)'});
+  });
+  s+=tx(P[0].x0-60,26,'AIME 2024 accuracy (pass@1)',{fs:16,w:700,fill:'var(--fg-strong)'})+tx(P[1].x0-60,26,'Average answer length (tokens)',{fs:16,w:700,fill:'var(--fg-strong)'});
+  s+='<g data-show="0" data-hide="1"><circle cx="'+X(0,200)+'" cy="'+YA(.156)+'" r="6" fill="var(--k-score)"/>'+tx(X(0,200)+12,YA(.156)+6,'15.6% at the start',{fs:16,w:700,fill:'var(--fg-strong)'})+'</g>';
+  s+='<g data-show="1">'+line(ACC,0,YA,'var(--k-score)')+
+     '<line x1="'+P[0].x0+'" y1="'+YA(.378)+'" x2="'+P[0].x1+'" y2="'+YA(.378)+'" stroke="var(--fg-mid)" stroke-width="1.5" stroke-dasharray="6 5"/>'+
+     tx(P[0].x1,YA(.378)+22,'average human contestant',{a:'end',fs:15,fill:'var(--fg-mid)'})+
+     tx(X(0,10000)-4,YA(.779)-12,'77.9%',{a:'end',fs:17,w:700,fill:'var(--fg-strong)'})+'</g>';
+  s+='<g data-show="2">'+line(LEN,1,YL,'var(--c-blue)')+tx(X(1,250),YL(3600),'a few hundred',{fs:15,fill:'var(--fg-mid)'})+tx(X(1,10000),YL(13500)-14,'over 10k',{a:'end',fs:15,w:700,fill:'var(--fg-strong)'})+'</g>';
+  s+='<g data-show="3"><line x1="'+X(1,8200)+'" y1="'+y0+'" x2="'+X(1,8200)+'" y2="'+y1+'" stroke="var(--hl-bar)" stroke-width="3"/>'+
+     tx(X(1,8200)-8,y0+14,'length limit raised',{a:'end',fs:15,w:700,fill:'var(--fg-strong)'})+
+     '<line x1="'+X(0,8200)+'" y1="'+y0+'" x2="'+X(0,8200)+'" y2="'+y1+'" stroke="var(--hl-bar)" stroke-width="3"/></g>';
+  fig('fx-r1',{
+    svg:'<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="DeepSeek-R1-Zero during RL: AIME accuracy rises from 15.6% to 77.9% and average answer length grows">'+s+'</svg>',
+    caps:[
+      'DeepSeek-R1-Zero, trained with GRPO from the base model. At the start, it solves <b>15.6%</b> of AIME 2024 problems (a hard maths competition), on its first try.',
+      'During RL, accuracy climbs to <b>77.9%</b>, well above the dashed line for the average human contestant.',
+      'Meanwhile its answers get <b>longer by themselves</b>, from a few hundred tokens to over ten thousand. Nobody asked for more working; longer reasoning simply earned more correct answers.',
+      'One step in both curves is not learning: at step 8.2k the maximum answer length was raised from 32,768 to 65,536 tokens, and both curves jump.'
+    ]
+  });
+})();
+/* ===== Part B summary: PPO, DPO and GRPO, side by side ===== */
+(function(){
+  const W=1000,H=490;
+  const TAGS={T:['TRAINED','tag-t'],F:['FROZEN','tag-f'],R:['RULE','tag-r']};
+  const tag=(xr,yc,k)=>{const [t,c]=TAGS[k], w=Math.round(t.length*10.6+18);
+    return '<g class="tag '+c+'"><rect x="'+(xr-w)+'" y="'+(yc-11)+'" width="'+w+'" height="22" rx="11"/><text x="'+(xr-w/2)+'" y="'+(yc+5)+'" text-anchor="middle" font-size="14" font-weight="700" letter-spacing=".06em">'+t+'</text></g>';};
+  // o: {h, cls, col (title colour), tag: T|F|R, hl, stack}
+  const box=(g,cx,cy,w,label,subl,o)=>{o=o||{};const h=o.h||68, x=cx-w/2, y=cy-h/2;
+    let s='<g class="node '+(o.cls||'')+'" data-grp="'+g+'"'+(o.hl!=null?' data-hl="'+o.hl+'"':'')+'>';
+    if(o.stack) s+='<rect x="'+(x+12)+'" y="'+(y-12)+'" width="'+w+'" height="'+h+'" rx="12"/><rect x="'+(x+6)+'" y="'+(y-6)+'" width="'+w+'" height="'+h+'" rx="12"/>';
+    s+='<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" rx="12"/>'+
+      '<text x="'+cx+'" y="'+(cy-6)+'" text-anchor="middle" font-size="19" font-weight="700" fill="'+(o.col||'var(--fg-strong)')+'">'+label+'</text>'+
+      '<text x="'+cx+'" y="'+(cy+19)+'" text-anchor="middle" font-size="16" fill="var(--fg-mid)">'+subl+'</text>';
+    if(o.tag) s+=tag(x+w-10,y,o.tag);
+    return s+'</g>';};
+  const ar=(g,d,dash)=>'<path data-grp="'+g+'" d="'+d+'" fill="none" stroke="var(--fg-faint)" stroke-width="2.5"'+(dash?' stroke-dasharray="6 5"':'')+' marker-end="url(#aah)"/>';
+  const defs='<defs><marker id="aah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1L9 5L1 9z" fill="var(--fg-faint)"/></marker></defs>';
+  const legend=(()=>{let s='',x=20;const y=474;
+    [['T','weights change'],['F','weights fixed'],['R','not a model']].forEach(([k,t])=>{
+      const w=Math.round(TAGS[k][0].length*10.6+18); s+=tag(x+w,y-5,k)+tx(x+w+10,y,t,{fs:15,fill:'var(--fg-mid)'}); x+=w+10+t.length*7.6+30;});
+    return '<g>'+s+'</g>';})();
+  const pi=s=>'π'+sub(s), ys=s=>'y'+sub(s);
+  const note=(x,y,t,show,a)=>'<g data-show="'+show+'">'+tx(x,y,t,{a:a||'middle',fs:16,w:700,fill:'var(--fg-muted)'})+'</g>';
+  const M={
+    ppo:{n:8,
+      svg:ar('pm','M187,80 L218,80')+ar('mrm','M442,80 L503,80')+ar('mref','M442,104 C472,104 472,200 503,200')+ar('mold','M350,114 L350,170',1)+
+        ar('rmtot','M737,80 C770,80 792,88 800,104')+ar('reftot','M737,200 C770,200 792,192 800,176')+
+        ar('totadv','M885,174 L885,274')+ar('critadv','M737,310 L793,310')+ar('advup','M885,344 C885,410 700,410 522,410')+
+        ar('oldup','M350,228 L350,374')+ar('upm','M235,376 L235,116')+
+        '<g data-show="6" data-hide="7">'+ar('totcrit','M800,174 C800,262 770,296 739,296',1)+tx(764,252,'V(x) → total',{a:'end',fs:15,w:700,fill:'var(--k-critic)'})+'</g>'+
+        box('p',100,80,170,'Prompt x','from the prompt set',{hl:1})+
+        box('m',330,80,220,'Model '+pi('θ'),'writes answer y',{cls:'model',tag:'T',hl:'1 5'})+
+        box('old',350,200,200,pi('old'),'saved probabilities of y',{cls:'old',h:56,hl:1})+
+        box('rm',620,80,230,'Reward model r'+sub('φ'),'score',{cls:'score',col:'var(--k-score)',tag:'F',hl:2})+
+        box('ref',620,200,230,'Reference model '+pi('ref'),'KL: how far from SFT?',{cls:'leash',col:'var(--k-leash)',tag:'F',hl:3})+
+        box('tot',880,140,200,'Total','score − β × KL',{hl:3})+
+        box('critic',620,310,230,'Critic V','guesses the usual total',{cls:'critic',col:'var(--k-critic)',tag:'T',hl:'4 6'})+
+        box('adv',885,310,180,'Advantage','A = total − V(x)',{hl:4})+
+        box('up',330,410,380,'Clipped update of θ','ρ = '+pi('θ')+' / '+pi('old')+', kept in 0.8–1.2',{hl:5}),
+      groups:[['*'],['p','pm','m','mold','old'],['m','mrm','rm'],['m','mref','ref','rm','rmtot','reftot','tot'],['critic','tot','totadv','critadv','adv'],['adv','advup','old','oldup','up','upm','m'],['tot','totcrit','critic'],['m','rm','ref','critic']],
+      caps:[
+        'PPO, as in InstructGPT: four models, two of them trained. Step through one round.',
+        'A prompt x from the prompt set goes to the model π<sub>θ</sub>, which writes an answer y. Its probabilities for y are saved as π<sub>old</sub>.',
+        'The <span class="k-score"><b>reward model</b></span> r<sub>φ</sub> (frozen) gives y a <span class="k-score"><b>score</b></span>.',
+        'The <span class="k-leash"><b>reference model</b></span> π<sub>ref</sub> (frozen) gives the KL divergence. Total = score − β × KL.',
+        'The <span class="k-critic"><b>critic</b></span> V (trained) guesses the usual total for this prompt. Advantage A = total − V(x).',
+        'Update the model: ρ = π<sub>θ</sub> / π<sub>old</sub>, clipped to 0.8–1.2, weighted by A. PPO takes several such steps on the same batch.',
+        'Update the <span class="k-critic"><b>critic</b></span> too: by regression, V(x) is pushed towards the total this answer got.',
+        '<b>4 models</b> in memory: 2 trained (model, critic) and 2 frozen (reward model, reference model). π<sub>old</sub> is saved probabilities, not an extra model.'
+      ],
+      read:['model, critic','reward model, reference model',null,4]},
+    dpo:{n:5,
+      svg:ar('pr','M237,150 C266,150 266,100 293,100')+ar('pm','M237,180 C266,180 266,230 293,230')+
+        ar('refimp','M547,100 C575,100 580,150 598,155')+ar('mimp','M547,230 C575,230 580,180 598,175')+
+        ar('imploss','M740,199 L740,264')+ar('lossup','M740,334 C740,390 650,390 572,390')+ar('upm','M420,356 L420,266')+
+        box('pairs',125,165,220,'Preference pairs','('+'x, '+ys('w')+', '+ys('l')+'), fixed dataset',{hl:1})+
+        box('ref',420,100,250,'Reference model '+pi('ref'),'probabilities of '+ys('w')+' and '+ys('l'),{cls:'leash',col:'var(--k-leash)',tag:'F',hl:2})+
+        box('m',420,230,250,'Model '+pi('θ'),'probabilities of '+ys('w')+' and '+ys('l'),{cls:'model',tag:'T',hl:'2 4'})+
+        box('imp',740,165,280,'Implicit rewards','β log('+pi('θ')+' / '+pi('ref')+') for each',{hl:2})+
+        box('loss',740,300,280,'Loss','gap → σ → −log',{hl:3})+
+        box('up',420,390,300,'Update θ','the model\'s weights only',{hl:4})+
+        note(985,440,'no reward model · no critic · no new answers',4,'end'),
+      groups:[['*'],['pairs'],['pairs','pr','pm','ref','m','refimp','mimp','imp'],['imp','imploss','loss'],['loss','lossup','up','upm','m']],
+      caps:[
+        'DPO: two models, only one trained. No reward model, no critic, no new answers.',
+        'Take one labelled pair (x, y<sub>w</sub>, y<sub>l</sub>) from a fixed dataset. The model writes nothing.',
+        'The model π<sub>θ</sub> (trained) and the <span class="k-leash"><b>reference model</b></span> π<sub>ref</sub> (frozen) both give probabilities for y<sub>w</sub> and y<sub>l</sub>. Each answer\'s implicit reward is β log(π<sub>θ</sub> / π<sub>ref</sub>).',
+        'The gap between the two implicit rewards goes through σ and −log to give the loss (B5).',
+        'Update only the model\'s weights. <b>2 models</b> in memory: 1 trained, 1 frozen.'
+      ],
+      read:['model','reference model',null,2]},
+    grpo:{n:6,
+      svg:ar('qm','M197,90 L233,90')+ar('mans','M447,90 L503,90')+ar('ansrule','M709,90 L758,90')+ar('ruleadv','M865,124 L865,194')+
+        ar('advup','M865,264 C865,380 840,380 797,380')+ar('refup','M277,380 L353,380')+ar('upm','M430,346 C430,260 340,210 340,126')+
+        box('q',105,90,180,'Question x','from the question set',{hl:1})+
+        box('m',340,90,210,'Model '+pi('θ'),'writes G answers',{cls:'model',tag:'T',hl:'1 4'})+
+        box('ans',600,90,190,'G answers',ys('1')+' … '+ys('G'),{stack:1,hl:1})+
+        box('rule',865,90,210,'Rule-based reward','1 if right, 0 if wrong',{cls:'rule',col:'var(--k-score)',tag:'R',hl:2})+
+        box('adv',865,230,240,'Advantage A'+sub('i'),'(r'+sub('i')+' − group mean) ÷ spread',{hl:3})+
+        box('ref',150,380,250,'Reference model '+pi('ref'),'for the KL penalty',{cls:'leash',col:'var(--k-leash)',tag:'F',hl:4})+
+        box('up',575,380,440,'Clipped update of θ','A'+sub('i')+' with ρ'+sub('i')+' kept in 0.8–1.2, minus β × KL',{hl:4})+
+        note(620,250,'no critic',5),
+      groups:[['*'],['q','qm','m','mans','ans'],['ans','ansrule','rule'],['rule','ruleadv','adv'],['adv','advup','ref','refup','up','upm','m'],['m','ref','rule']],
+      caps:[
+        'GRPO, as in DeepSeek-R1-Zero: one trained model, one frozen model and a rule. No critic.',
+        'The model π<sub>θ</sub> (trained) writes G answers to one question. DeepSeek-R1-Zero used G = 16.',
+        'A <span class="k-score"><b>rule-based reward</b></span> scores each answer, e.g. 1 if the final answer is right and 0 if wrong. DeepSeekMath used a frozen reward model here instead.',
+        'The group\'s mean and spread turn each score into an advantage A<sub>i</sub>. This replaces the critic.',
+        'Clipped update with each A<sub>i</sub> (as in PPO), minus the KL penalty to the <span class="k-leash"><b>reference model</b></span> π<sub>ref</sub> (frozen).',
+        '<b>2 models</b> in memory, 1 trained and 1 frozen, plus a rule.'
+      ],
+      read:['model','reference model','rule-based reward',2]}
+  };
+  let shown=null;
+  fig('fx-arch',{
+    html:'<div class="arch"></div>',
+    chips:{label:'Method:',items:[['ppo','PPO'],['dpo','DPO'],['grpo','GRPO']],value:'ppo',restart:true},
+    count:c=>M[c].n,
+    groups:(step,c)=>M[c].groups[step],
+    onStep(step,c,root){
+      if(shown===c) return;
+      shown=c;
+      const o=M[c], r=o.read;
+      root.querySelector('.arch').innerHTML='<svg class="bloop" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+c.toUpperCase()+': which models are trained, which are frozen, and how one training step flows">'+defs+o.svg+legend+'</svg>'+
+        '<div class="readout"><span>Trained: <b>'+r[0]+'</b></span><span>Frozen: <b>'+r[1]+'</b></span>'+(r[2]?'<span>Rule: <b>'+r[2]+'</b></span>':'')+'<span><b>'+r[3]+'</b> models in memory</span></div>';
+    },
+    caps:(step,c)=>M[c].caps[step]
+  });
+})();
+})();
+</script>
+<script>
+window.addEventListener('DOMContentLoaded',function(){
+  try{ if(window.renderMathInElement) renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false,trust:c=>c.command==='\\htmlClass'}); }catch(e){}
+});
+</script>
+</body>
+</html>
